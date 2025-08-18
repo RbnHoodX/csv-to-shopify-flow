@@ -1,11 +1,13 @@
 import { create } from 'zustand';
 import { parseCsv, normalizeRow, type ParsedCSV } from '@/lib/csv-parser';
+import { extractRuleSets, extractNoStonesRuleSets, logRuleSetStats, type RuleSet, type NoStonesRuleSet } from '@/lib/rulebook-parser';
 
 export type CSVFile = {
   name: string;
   rawText: string;
   parsedRows: any[];
   normalizedRows: Record<string, any>[];
+  ruleSet?: RuleSet | NoStonesRuleSet;
   rowCount: number;
   headers: string[];
   uploaded: boolean;
@@ -64,6 +66,25 @@ export const useCSVStore = create<CSVStore>((set, get) => ({
       // Normalize all rows (preserve originals, don't mutate source)
       const normalizedRows = parsed.rows.map(row => normalizeRow(row));
 
+      // Extract rule sets based on file type
+      let ruleSet: RuleSet | NoStonesRuleSet | undefined;
+      
+      if (fileType === 'naturalRules') {
+        ruleSet = extractRuleSets(parsed.rows);
+        logRuleSetStats(ruleSet, 'Natural');
+        addLog('info', `Natural Rules: G=${(ruleSet as RuleSet).metalsG.length}, H=${(ruleSet as RuleSet).centersH.length}, I=${(ruleSet as RuleSet).qualitiesI.length}, J=${(ruleSet as RuleSet).metalsJ.length}, K=${(ruleSet as RuleSet).qualitiesK.length}`);
+        addLog('info', `Lookup tables: Weight=${(ruleSet as RuleSet).weightIndex.size}, Price=${(ruleSet as RuleSet).metalPrice.size}, Labor=${(ruleSet as RuleSet).labor.size}, Margins=${(ruleSet as RuleSet).margins.length}`);
+      } else if (fileType === 'labGrownRules') {
+        ruleSet = extractRuleSets(parsed.rows);
+        logRuleSetStats(ruleSet, 'LabGrown');
+        addLog('info', `LabGrown Rules: G=${(ruleSet as RuleSet).metalsG.length}, H=${(ruleSet as RuleSet).centersH.length}, I=${(ruleSet as RuleSet).qualitiesI.length}, J=${(ruleSet as RuleSet).metalsJ.length}, K=${(ruleSet as RuleSet).qualitiesK.length}`);
+        addLog('info', `Lookup tables: Weight=${(ruleSet as RuleSet).weightIndex.size}, Price=${(ruleSet as RuleSet).metalPrice.size}, Labor=${(ruleSet as RuleSet).labor.size}, Margins=${(ruleSet as RuleSet).margins.length}`);
+      } else if (fileType === 'noStonesRules') {
+        ruleSet = extractNoStonesRuleSets(parsed.rows);
+        logRuleSetStats(ruleSet, 'NoStones');
+        addLog('info', `No Stones Rules: Metals A=${(ruleSet as NoStonesRuleSet).metalsA.length}`);
+      }
+
       set(state => ({
         files: {
           ...state.files,
@@ -72,6 +93,7 @@ export const useCSVStore = create<CSVStore>((set, get) => ({
             rawText: text,
             parsedRows: parsed.rows,
             normalizedRows,
+            ruleSet,
             rowCount: parsed.rows.length,
             headers: parsed.headers,
             uploaded: true,

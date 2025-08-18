@@ -7,6 +7,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { ChevronDown, ChevronRight, Bug, Code } from 'lucide-react';
 import { useCSVStore } from '@/store/csvStore';
 import { normalizeRow, trimAll, toNum, toFixed2, ctStr, DiamondsType } from '@/lib/csv-parser';
+import { RuleSetDebug } from './RuleSetDebug';
+import type { RuleSet, NoStonesRuleSet } from '@/lib/rulebook-parser';
 
 export const DebugPanel: React.FC = () => {
   const { files } = useCSVStore();
@@ -20,6 +22,7 @@ export const DebugPanel: React.FC = () => {
   };
 
   const fileEntries = Object.entries(files).filter(([_, file]) => file.uploaded);
+  const ruleFiles = fileEntries.filter(([key]) => key.endsWith('Rules'));
   
   // Demo normalization examples
   const demoExamples = {
@@ -53,13 +56,27 @@ export const DebugPanel: React.FC = () => {
           Debug Panel
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          Normalized examples and parsing validation
+          Normalized examples and rulebook extraction
         </p>
       </CardHeader>
       
       <CardContent className="p-0">
         <ScrollArea className="h-96 px-6 pb-4">
           <div className="space-y-4">
+            {/* Rule Sets */}
+            {ruleFiles.map(([fileKey, file]) => {
+              if (!file.ruleSet) return null;
+              return (
+                <RuleSetDebug
+                  key={fileKey}
+                  fileKey={fileKey as 'naturalRules' | 'labGrownRules' | 'noStonesRules'}
+                  ruleSet={file.ruleSet}
+                  isOpen={openSections[fileKey]}
+                  onToggle={() => toggleSection(fileKey)}
+                />
+              );
+            })}
+
             {/* Normalization Functions Demo */}
             <Collapsible 
               open={openSections.functions} 
@@ -116,89 +133,10 @@ export const DebugPanel: React.FC = () => {
               </CollapsibleContent>
             </Collapsible>
 
-            {/* Parsed Files */}
-            {fileEntries.map(([fileKey, file]) => (
-              <Collapsible 
-                key={fileKey}
-                open={openSections[fileKey]} 
-                onOpenChange={() => toggleSection(fileKey)}
-              >
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" className="w-full justify-between p-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-primary rounded-full"></div>
-                      <span>{file.name}</span>
-                      <Badge variant="secondary" className="text-xs">
-                        {file.rowCount} rows
-                      </Badge>
-                    </div>
-                    {openSections[fileKey] ? 
-                      <ChevronDown className="h-4 w-4" /> : 
-                      <ChevronRight className="h-4 w-4" />
-                    }
-                  </Button>
-                </CollapsibleTrigger>
-                
-                <CollapsibleContent className="space-y-2 mt-2">
-                  <div className="text-xs text-muted-foreground mb-2">
-                    Headers: {file.headers.join(', ')}
-                  </div>
-                  
-                  {file.parsedRows.slice(0, 3).map((row, idx) => {
-                    const normalized = normalizeRow(row);
-                    return (
-                      <div key={idx} className="border rounded-lg p-3 space-y-2">
-                        <div className="text-xs font-medium">Row {idx + 1} (Sample)</div>
-                        
-                        <div className="grid grid-cols-1 gap-2">
-                          {Object.entries(normalized).slice(0, 3).map(([key, data]) => (
-                            <div key={key} className="bg-muted/30 rounded p-2">
-                              <div className="text-xs font-medium text-muted-foreground mb-1">
-                                {key}
-                              </div>
-                              <div className="space-y-1 text-xs font-mono">
-                                <div>
-                                  <span className="text-muted-foreground">Raw:</span>{' '}
-                                  "{data.raw}"
-                                </div>
-                                <div>
-                                  <span className="text-muted-foreground">Trimmed:</span>{' '}
-                                  "{data.trimmed}"
-                                </div>
-                                <div>
-                                  <span className="text-muted-foreground">Numeric:</span>{' '}
-                                  {isNaN(data.numeric) ? 'NaN' : data.numeric}
-                                </div>
-                                <div>
-                                  <span className="text-muted-foreground">Valid:</span>{' '}
-                                  {data.isValid ? 'true' : 'false'}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                          {Object.keys(normalized).length > 3 && (
-                            <div className="text-xs text-muted-foreground">
-                              ... and {Object.keys(normalized).length - 3} more columns
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  
-                  {file.rowCount > 3 && (
-                    <div className="text-xs text-muted-foreground text-center py-2">
-                      ... and {file.rowCount - 3} more rows
-                    </div>
-                  )}
-                </CollapsibleContent>
-              </Collapsible>
-            ))}
-
             {fileEntries.length === 0 && (
               <div className="text-center text-muted-foreground py-8">
                 <Bug className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p>Upload CSV files to see normalization</p>
+                <p>Upload CSV files to see extraction</p>
               </div>
             )}
           </div>
