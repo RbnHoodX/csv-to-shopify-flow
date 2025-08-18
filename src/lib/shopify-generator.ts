@@ -98,11 +98,10 @@ function translateQuality(qualityCode: string): string {
 }
 
 /**
- * Calculate total carat string based on scenario
+ * Calculate total carat weight for a variant
  */
-function calculateTotalCarat(variant: VariantSeed): string {
+function calculateTotalCaratWeight(variant: VariantSeed): number {
   if (variant.scenario === 'Unique+Center' && variant.centerSize) {
-    // Get side carat from input row
     const sideCt = toNum(
       variant.inputRowRef['Side ct'] ||
       variant.inputRowRef['Side Ct'] ||
@@ -110,56 +109,166 @@ function calculateTotalCarat(variant: VariantSeed): string {
       variant.inputRowRef['Side Carat'] ||
       '0'
     );
-    
     const centerCt = toNum(variant.centerSize);
-    const total = sideCt + centerCt;
-    
-    return ctStr(total, centerCt);
+    return sideCt + centerCt;
   } else {
-    // Use input "Total Ct Weight"
-    const totalCt = toNum(
+    return toNum(
       variant.inputRowRef['Total Ct Weight'] ||
       variant.inputRowRef['Total ct'] ||
       variant.inputRowRef['TotalCt'] ||
       variant.inputRowRef['Total Carat'] ||
       '0'
     );
-    
+  }
+}
+
+/**
+ * Calculate total carat string based on scenario
+ */
+function calculateTotalCarat(variant: VariantSeed): string {
+  if (variant.scenario === 'Unique+Center' && variant.centerSize) {
+    const sideCt = toNum(
+      variant.inputRowRef['Side ct'] ||
+      variant.inputRowRef['Side Ct'] ||
+      variant.inputRowRef['SideCt'] ||
+      variant.inputRowRef['Side Carat'] ||
+      '0'
+    );
+    const centerCt = toNum(variant.centerSize);
+    const total = sideCt + centerCt;
+    return ctStr(total, centerCt);
+  } else {
+    const totalCt = calculateTotalCaratWeight(variant);
     return ctStr(totalCt);
   }
 }
 
 /**
- * Create base product info from input row
+ * Collect unique shapes from variants
  */
-function createProductInfo(inputRow: any) {
-  const title = trimAll(
-    inputRow['Title'] ||
-    inputRow['Product Name'] ||
-    inputRow['Name'] ||
-    `Product ${inputRow.coreNumber}`
-  );
+function collectShapes(variants: VariantSeed[]): string[] {
+  const shapes = new Set<string>();
+  
+  for (const variant of variants) {
+    // Add center shape if present
+    if (variant.inputRowRef['Center shape']) {
+      shapes.add(trimAll(variant.inputRowRef['Center shape']));
+    }
+    
+    // Add side shapes (may be comma-separated)
+    const sideShapes = variant.inputRowRef['Side shapes'] || variant.inputRowRef['Side shape'] || '';
+    if (sideShapes) {
+      const shapeList = sideShapes.split(',').map((s: string) => trimAll(s)).filter((s: string) => s);
+      shapeList.forEach((shape: string) => shapes.add(shape));
+    }
+  }
+  
+  return Array.from(shapes).sort();
+}
 
-  const vendor = trimAll(
-    inputRow['Vendor'] ||
-    inputRow['Brand'] ||
-    'Base44'
-  );
+/**
+ * Generate body HTML based on scenario
+ */
+function generateBodyHTML(variants: VariantSeed[], title: string, scenario: string): string {
+  const firstVariant = variants[0];
+  const diamondType = firstVariant.inputRowRef.diamondsType || 'diamonds';
+  
+  if (scenario === 'NoStones') {
+    return `<p><strong>${title}</strong></p>
+<p>Expertly crafted jewelry piece from Primestyle.com. Made with precision and attention to detail.</p>
+<p>Perfect for everyday wear or special occasions.</p>`;
+  }
+  
+  if (scenario === 'Unique+Center') {
+    const centerShape = firstVariant.inputRowRef['Center shape'] || 'round';
+    const centerSize = firstVariant.centerSize || '1.00';
+    const sideShapes = firstVariant.inputRowRef['Side shapes'] || firstVariant.inputRowRef['Side shape'] || '';
+    
+    return `<p><strong>${title}</strong></p>
+<p>Stunning ${diamondType} jewelry featuring a ${centerSize}CT ${centerShape} center stone${sideShapes ? ` with ${sideShapes} side stones` : ''}.</p>
+<p>Expertly crafted with premium materials and exceptional attention to detail.</p>
+<p>Perfect for engagements, anniversaries, or any special occasion.</p>`;
+  }
+  
+  // Repeating scenario
+  const totalCtRange = variants.length > 1 ? 
+    `${Math.min(...variants.map(calculateTotalCaratWeight)).toFixed(2)}-${Math.max(...variants.map(calculateTotalCaratWeight)).toFixed(2)}CT` :
+    `${calculateTotalCaratWeight(variants[0]).toFixed(2)}CT`;
+    
+  return `<p><strong>${title}</strong></p>
+<p>Beautiful ${diamondType} jewelry collection featuring ${totalCtRange} total carat weight.</p>
+<p>Available in multiple configurations to suit your preferences.</p>
+<p>Expertly crafted with premium materials and exceptional attention to detail.</p>`;
+}
 
-  const type = trimAll(
-    inputRow['Type'] ||
-    inputRow['Product Type'] ||
-    inputRow['Category'] ||
-    'Jewelry'
-  );
-
-  const tags = trimAll(
-    inputRow['Tags'] ||
-    inputRow['Keywords'] ||
-    ''
-  );
-
-  return { title, vendor, type, tags };
+/**
+ * Create enhanced product info from variants per handle
+ */
+function createProductInfo(variants: VariantSeed[]) {
+  const firstVariant = variants[0];
+  const inputRow = firstVariant.inputRowRef;
+  
+  // Calculate carat range for title
+  const caratWeights = variants.map(calculateTotalCaratWeight);
+  const minTCW = Math.min(...caratWeights);
+  const maxTCW = Math.max(...caratWeights);
+  
+  // Collect unique shapes
+  const shapes = collectShapes(variants);
+  const shapesStr = shapes.length > 0 ? shapes.join('/') : 'Mixed';
+  
+  // Get category and subcategory
+  const category = trimAll(inputRow['Category'] || 'Jewelry');
+  const subcategory = trimAll(inputRow['Subcategory'] || inputRow['Type'] || 'Piece');
+  
+  // Generate title based on spec: "{MinTCW}-{MaxTCW} CT {Shapes} Cut - {Subcategory}"
+  const title = firstVariant.scenario === 'NoStones' 
+    ? `${subcategory} - Premium ${category}`
+    : minTCW === maxTCW 
+      ? `${minTCW.toFixed(2)} CT ${shapesStr} Cut - ${subcategory}`
+      : `${minTCW.toFixed(2)}-${maxTCW.toFixed(2)} CT ${shapesStr} Cut - ${subcategory}`;
+  
+  // Vendor is always "Primestyle.com"
+  const vendor = 'Primestyle.com';
+  
+  // Type format: "{Category}_{Subcategory}"
+  const type = `${category}_${subcategory}`;
+  
+  // Build tags: Category, Subcategory, input Tags, and "tcw_{Min} CT - {Max} CT"
+  const inputTags = trimAll(inputRow['Tags'] || inputRow['Keywords'] || '');
+  const tcwTag = firstVariant.scenario === 'NoStones' 
+    ? '' 
+    : `tcw_${minTCW.toFixed(2)} CT - ${maxTCW.toFixed(2)} CT`;
+  
+  const tagParts = [category, subcategory, inputTags, tcwTag].filter(Boolean);
+  const tags = tagParts.join(', ');
+  
+  // Generate body HTML
+  const bodyHTML = generateBodyHTML(variants, title, firstVariant.scenario);
+  
+  // Generate Google Product Category based on type
+  let googleCategory = 'Apparel & Accessories > Jewelry';
+  if (category.toLowerCase().includes('ring')) {
+    googleCategory = 'Apparel & Accessories > Jewelry > Rings';
+  } else if (category.toLowerCase().includes('bracelet')) {
+    googleCategory = 'Apparel & Accessories > Jewelry > Bracelets';
+  } else if (category.toLowerCase().includes('pendant') || category.toLowerCase().includes('necklace')) {
+    googleCategory = 'Apparel & Accessories > Jewelry > Necklaces';
+  } else if (category.toLowerCase().includes('earring')) {
+    googleCategory = 'Apparel & Accessories > Jewelry > Earrings';
+  }
+  
+  return { 
+    title, 
+    vendor, 
+    type, 
+    tags, 
+    bodyHTML, 
+    googleCategory,
+    diamondType: inputRow.diamondsType || 'diamonds',
+    qualities: [...new Set(variants.map(v => v.qualityCode).filter(Boolean))],
+    metals: [...new Set(variants.map(v => v.metalCode))]
+  };
 }
 
 /**
@@ -206,7 +315,7 @@ export function generateShopifyRowsWithCosts(
     });
 
     const firstVariant = sortedVariants[0];
-    const productInfo = createProductInfo(firstVariant.inputRowRef);
+    const productInfo = createProductInfo(sortedVariants);
     const isNoStones = firstVariant.scenario === 'NoStones';
     
     // Get appropriate rule set
@@ -234,12 +343,16 @@ export function generateShopifyRowsWithCosts(
             }
           };
 
+      // Generate enhanced SEO title and description
+      const seoTitle = isParent ? `${productInfo.title} | ${productInfo.qualities.join('/')} ${productInfo.diamondType} | ${productInfo.metals.join('/')} | ${productInfo.vendor}` : '';
+      const seoDescription = isParent ? `Shop ${productInfo.title} featuring ${productInfo.diamondType} in ${productInfo.metals.join('/')} metal. Premium quality ${productInfo.qualities.join('/')} diamonds. SKU: ${sku}. Free shipping available.` : '';
+
       const row: ShopifyRowWithCosts = {
         Handle: handle,
         
-        // Parent-only fields (blank for children)
+        // Parent-only fields (blank for children) - Enhanced with new spec
         Title: isParent ? productInfo.title : '',
-        'Body (HTML)': isParent ? `<p>${productInfo.title} - Premium jewelry from Base44</p>` : '',
+        'Body (HTML)': isParent ? productInfo.bodyHTML : '',
         Vendor: isParent ? productInfo.vendor : '',
         'Product Category': isParent ? 'Jewelry' : '',
         Type: isParent ? productInfo.type : '',
@@ -247,7 +360,7 @@ export function generateShopifyRowsWithCosts(
         Published: isParent ? 'TRUE' : '',
         'Image Src': isParent ? '' : '',
         'Image Position': isParent ? '1' : '',
-        'Image Alt Text': isParent ? `${productInfo.title} jewelry` : '',
+        'Image Alt Text': isParent ? productInfo.title : '',
         
         // Option Names (parent-only, blank for No Stones)
         'Option1 Name': isParent && !isNoStones ? 'Metal/Color' : '',
@@ -279,15 +392,15 @@ export function generateShopifyRowsWithCosts(
         'Compare At Price / International': '',
         Status: 'active',
         
-        // SEO fields (parent-only)
-        'SEO Title': isParent ? `${productInfo.title} - ${productInfo.vendor}` : '',
-        'SEO Description': isParent ? `Premium ${productInfo.title} from ${productInfo.vendor}. High-quality jewelry crafted with precision.` : '',
+        // Enhanced SEO fields (parent-only)
+        'SEO Title': seoTitle,
+        'SEO Description': seoDescription,
         
-        // Google Shopping fields
-        'Google Shopping / Google Product Category': isParent ? 'Apparel & Accessories > Jewelry' : '',
-        'Google Shopping / Gender': '',
-        'Google Shopping / Age Group': '',
-        'Google Shopping / MPN': '',
+        // Enhanced Google Shopping fields (parent-only)
+        'Google Shopping / Google Product Category': isParent ? productInfo.googleCategory : '',
+        'Google Shopping / Gender': isParent ? 'Female' : '',
+        'Google Shopping / Age Group': isParent ? 'Adult' : '',
+        'Google Shopping / MPN': isParent ? sku : '',
         'Google Shopping / AdWords Grouping': '',
         'Google Shopping / AdWords Labels': '',
         'Google Shopping / Condition': isParent ? 'new' : '',
