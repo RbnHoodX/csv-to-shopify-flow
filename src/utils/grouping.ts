@@ -12,7 +12,7 @@ export function groupByCoreNumber(inputRows: InputRow[]): Map<string, InputRow[]
   const groups = new Map<string, InputRow[]>();
   
   for (const row of inputRows) {
-    const coreNumber = trimAll(row['Core Number'] || '');
+    const coreNumber = row.coreNumber;
     if (!coreNumber) continue;
     
     if (!groups.has(coreNumber)) {
@@ -38,7 +38,7 @@ export function determineScenario(rows: InputRow[]): VariantSeed['scenario'] {
   if (rows.length === 0) throw new Error('Cannot determine scenario for empty rows');
   
   const firstRow = rows[0];
-  const diamondsType = trimAll(firstRow['Diamonds Type'] || '').toLowerCase();
+  const diamondsType = (firstRow.diamondsType || '').toLowerCase();
   
   // No stones scenario
   if (diamondsType.includes('no stones')) {
@@ -47,8 +47,8 @@ export function determineScenario(rows: InputRow[]): VariantSeed['scenario'] {
   
   // Unique items
   if (rows.length === 1) {
-    const hasCenter = trimAll(firstRow['Center ct'] || '') !== '';
-    return hasCenter ? 'Unique+Center' : 'Unique-NoCenter';
+    const hasCenter = (firstRow['Center ct'] || firstRow['Center Ct'] || firstRow['CenterCt'] || '') !== '';
+    return hasCenter ? 'Unique+Center' : 'Unique+NoCenter';
   }
   
   // Multiple rows = Repeating
@@ -77,7 +77,7 @@ export function createCoreGroups(inputRows: InputRow[]): CoreGroup[] {
     const firstRow = rows[0];
     const scenario = determineScenario(rows);
     const handle = generateHandle(coreNumber, scenario);
-    const diamondsType = trimAll(firstRow['Diamonds Type'] || '');
+    const diamondsType = firstRow.diamondsType || '';
     
     coreGroups.push({
       coreNumber,

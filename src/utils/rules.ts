@@ -53,7 +53,7 @@ export function extractCenterSizes(ruleSet: RuleSet): string[] {
 export function extractQualityCodes(ruleSet: RuleSet, scenario: VariantSeed['scenario']): string[] {
   if (scenario === 'Unique+Center') {
     return ruleSet.qualitiesI || [];
-  } else if (scenario === 'Unique-NoCenter' || scenario === 'Repeating') {
+  } else if (scenario === 'Unique+NoCenter' || scenario === 'Repeating') {
     return ruleSet.qualitiesK || [];
   }
   return [];

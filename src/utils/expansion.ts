@@ -49,15 +49,15 @@ export function expandUniqueNoCenter(
   const variants: VariantSeed[] = [];
   const inputRow = coreGroup.inputRows[0];
   
-  const metalCodes = extractMetalCodes(ruleSet, 'Unique-NoCenter');
-  const qualityCodes = extractQualityCodes(ruleSet, 'Unique-NoCenter');
+  const metalCodes = extractMetalCodes(ruleSet, 'Unique+NoCenter');
+  const qualityCodes = extractQualityCodes(ruleSet, 'Unique+NoCenter');
   
   for (const metalCode of metalCodes) {
     for (const qualityCode of qualityCodes) {
       variants.push({
         handle: coreGroup.handle,
         core: coreGroup.coreNumber,
-        scenario: 'Unique-NoCenter',
+        scenario: 'Unique+NoCenter',
         metalCode,
         qualityCode,
         inputRowRef: inputRow
@@ -152,7 +152,7 @@ export function expandAllGroups(
       case 'Unique+Center':
         variants = expandUniqueWithCenter(group, ruleSet as RuleSet);
         break;
-      case 'Unique-NoCenter':
+      case 'Unique+NoCenter':
         variants = expandUniqueNoCenter(group, ruleSet as RuleSet);
         break;
       case 'Repeating':

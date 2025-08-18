@@ -2,29 +2,14 @@
  * Core type definitions for the CSV to Shopify converter
  */
 
-// Base input row structure from uploaded CSV
+// Base input row structure from uploaded CSV  
 export interface InputRow {
-  'Core Number': string;
-  'Diamonds Type': string;
-  Category: string;
-  Subcategory: string;
-  'Grams Weight': string;
-  'Total Ct Weight': string;
-  'Center ct'?: string;
-  'Sum Side Ct': string;
-  'Side Stone Count': string;
-  'Center shape'?: string;
-  'Side shapes'?: string;
-  Title?: string;
-  Tags?: string;
-  Vendor?: string;
-  Type?: string;
-  
-  // Flexible indexer for additional fields
-  [key: string]: string | undefined;
+  coreNumber: string;
+  diamondsType: string;
+  [key: string]: any; // Other columns from the input CSV
 }
 
-// Variant seed generated during expansion
+// Variant seed generated during expansion (compatible with existing code)
 export interface VariantSeed {
   handle: string;
   core: string;
