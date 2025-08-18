@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { parseCsv, normalizeRow, type ParsedCSV } from '@/lib/csv-parser';
 import { extractRuleSets, extractNoStonesRuleSets, logRuleSetStats, type RuleSet, type NoStonesRuleSet } from '@/lib/rulebook-parser';
 import { processInputData, type GroupSummary } from '@/lib/input-processor';
+import { expandAllVariants, calculateExpectedCounts, type ExpansionResult } from '@/lib/variant-expansion';
 
 export type CSVFile = {
   name: string;
@@ -40,6 +41,10 @@ interface CSVStore {
       noStonesItems: number;
     };
   };
+  variantExpansion?: {
+    result: ExpansionResult;
+    expectedCounts: Record<string, number>;
+  };
   logs: LogEntry[];
   generatedCSV: string;
   uploadFile: (fileType: keyof CSVStore['files'], file: File) => Promise<void>;
@@ -48,6 +53,7 @@ interface CSVStore {
   clearLogs: () => void;
   generateShopifyCSV: () => Promise<void>;
   processInputAnalysis: () => void;
+  processVariantExpansion: () => void;
 }
 
 const createEmptyFile = (name: string): CSVFile => ({
@@ -71,7 +77,7 @@ export const useCSVStore = create<CSVStore>((set, get) => ({
   generatedCSV: '',
 
   uploadFile: async (fileType, file) => {
-    const { addLog, processInputAnalysis } = get();
+    const { addLog, processInputAnalysis, processVariantExpansion } = get();
     
     try {
       const text = await file.text();
@@ -122,6 +128,12 @@ export const useCSVStore = create<CSVStore>((set, get) => ({
       if (fileType === 'inputTest' || get().files.inputTest.uploaded) {
         processInputAnalysis();
       }
+
+      // Process variant expansion if we have input analysis and this affects rules
+      const state = get();
+      if (state.inputAnalysis && (fileType !== 'inputTest')) {
+        processVariantExpansion();
+      }
       
     } catch (error) {
       addLog('error', `Failed to parse ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -140,17 +152,23 @@ export const useCSVStore = create<CSVStore>((set, get) => ({
 
     get().addLog('info', `Removed ${fileName}`);
     
-    // Clear input analysis if input test file was removed
+    // Clear analyses if key files are removed
     if (fileType === 'inputTest') {
-      set({ inputAnalysis: undefined });
+      set({ inputAnalysis: undefined, variantExpansion: undefined });
+    } else {
+      // Reprocess variant expansion if rules changed
+      const state = get();
+      if (state.inputAnalysis) {
+        get().processVariantExpansion();
+      }
     }
   },
 
   processInputAnalysis: () => {
-    const { files, addLog } = get();
+    const { files, addLog, processVariantExpansion } = get();
     
     if (!files.inputTest.uploaded) {
-      set({ inputAnalysis: undefined });
+      set({ inputAnalysis: undefined, variantExpansion: undefined });
       return;
     }
 
@@ -171,8 +189,48 @@ export const useCSVStore = create<CSVStore>((set, get) => ({
       addLog('success', `Input analysis complete: ${analysis.stats.totalGroups} core numbers, ${analysis.stats.uniqueGroups} unique, ${analysis.stats.repeatingGroups} repeating`);
       addLog('info', `Rulebook distribution: Natural=${analysis.stats.naturalItems}, LabGrown=${analysis.stats.labGrownItems}, NoStones=${analysis.stats.noStonesItems}`);
       
+      // Trigger variant expansion
+      processVariantExpansion();
+      
     } catch (error) {
       addLog('error', `Failed to analyze input data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  },
+
+  processVariantExpansion: () => {
+    const { files, inputAnalysis, addLog } = get();
+    
+    if (!inputAnalysis) {
+      set({ variantExpansion: undefined });
+      return;
+    }
+
+    try {
+      const naturalRules = files.naturalRules.ruleSet as RuleSet | undefined;
+      const labGrownRules = files.labGrownRules.ruleSet as RuleSet | undefined;
+      const noStonesRules = files.noStonesRules.ruleSet as NoStonesRuleSet | undefined;
+      
+      const result = expandAllVariants(
+        inputAnalysis.summary,
+        naturalRules,
+        labGrownRules,
+        noStonesRules
+      );
+
+      const expectedCounts = calculateExpectedCounts(
+        inputAnalysis.summary,
+        naturalRules,
+        labGrownRules,
+        noStonesRules
+      );
+
+      set({ variantExpansion: { result, expectedCounts } });
+      
+      addLog('success', `Variant expansion complete: ${result.stats.totalVariants} total variants`);
+      addLog('info', `Breakdown: Center=${result.stats.uniqueCenterVariants}, NoCenter=${result.stats.uniqueNoCenterVariants}, Repeating=${result.stats.repeatingVariants}, NoStones=${result.stats.noStonesVariants}`);
+      
+    } catch (error) {
+      addLog('error', `Failed to expand variants: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   },
 

@@ -4,10 +4,11 @@ import { GenerationLog } from '@/components/GenerationLog';
 import { CSVExport } from '@/components/CSVExport';
 import { DebugPanel } from '@/components/DebugPanel';
 import { InputSummaryTable } from '@/components/InputSummaryTable';
+import { VariantExpansionTable } from '@/components/VariantExpansionTable';
 import { useCSVStore } from '@/store/csvStore';
 
 const Index = () => {
-  const { inputAnalysis } = useCSVStore();
+  const { inputAnalysis, variantExpansion } = useCSVStore();
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -51,6 +52,17 @@ const Index = () => {
             <InputSummaryTable 
               summary={inputAnalysis.summary}
               stats={inputAnalysis.stats}
+            />
+          </div>
+        )}
+
+        {/* Variant Expansion Section */}
+        {variantExpansion && (
+          <div className="space-y-4">
+            <h2 className="text-2xl font-semibold mb-4">2.7. Variant Expansion</h2>
+            <VariantExpansionTable 
+              expansionResult={variantExpansion.result}
+              expectedCounts={variantExpansion.expectedCounts}
             />
           </div>
         )}
