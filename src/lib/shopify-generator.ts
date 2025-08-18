@@ -1,5 +1,7 @@
 import { trimAll, toNum, toFixed2, ctStr } from './csv-parser';
 import type { VariantSeed } from './variant-expansion';
+import type { RuleSet, NoStonesRuleSet } from './rulebook-parser';
+import { calculateCostBreakdown, generateSKUWithRunningIndex, type CostBreakdown } from './cost-calculator';
 
 // Translation tables (extendable constants)
 export const METAL_TRANSLATIONS: Record<string, string> = {
@@ -75,6 +77,10 @@ export interface ShopifyRow {
   'Price / International': string;
   'Compare At Price / International': string;
   Status: string;
+}
+
+export interface ShopifyRowWithCosts extends ShopifyRow {
+  costBreakdown: CostBreakdown;
 }
 
 /**
@@ -167,9 +173,14 @@ function generateSKU(variant: VariantSeed, index: number): string {
 }
 
 /**
- * Generate Shopify rows from variant seeds
+ * Generate Shopify rows from variant seeds with cost calculations
  */
-export function generateShopifyRows(variants: VariantSeed[]): ShopifyRow[] {
+export function generateShopifyRowsWithCosts(
+  variants: VariantSeed[],
+  naturalRules?: RuleSet,
+  labGrownRules?: RuleSet,
+  noStonesRules?: NoStonesRuleSet
+): ShopifyRowWithCosts[] {
   if (variants.length === 0) return [];
 
   // Group variants by handle
@@ -181,7 +192,7 @@ export function generateShopifyRows(variants: VariantSeed[]): ShopifyRow[] {
     return acc;
   }, {} as Record<string, VariantSeed[]>);
 
-  const allRows: ShopifyRow[] = [];
+  const allRows: ShopifyRowWithCosts[] = [];
 
   for (const [handle, handleVariants] of Object.entries(variantsByHandle)) {
     // Sort variants for consistent ordering
@@ -197,12 +208,32 @@ export function generateShopifyRows(variants: VariantSeed[]): ShopifyRow[] {
     const firstVariant = sortedVariants[0];
     const productInfo = createProductInfo(firstVariant.inputRowRef);
     const isNoStones = firstVariant.scenario === 'NoStones';
+    
+    // Get appropriate rule set
+    let ruleSet: RuleSet | NoStonesRuleSet | undefined;
+    if (firstVariant.inputRowRef.diamondsType?.toLowerCase().includes('natural')) ruleSet = naturalRules;
+    else if (firstVariant.inputRowRef.diamondsType?.toLowerCase().includes('labgrown')) ruleSet = labGrownRules;
+    else if (firstVariant.inputRowRef.diamondsType?.toLowerCase().includes('no stones')) ruleSet = noStonesRules;
 
     sortedVariants.forEach((variant, index) => {
       const isParent = index === 0;
-      const sku = generateSKU(variant, index);
+      const sku = generateSKUWithRunningIndex(variant.core, sortedVariants, index);
+      
+      // Calculate cost breakdown
+      const costBreakdown = ruleSet 
+        ? calculateCostBreakdown(variant, ruleSet, sku)
+        : {
+            diamondCost: 0, metalCost: 0, sideStoneCost: 0, centerStoneCost: 0,
+            polishCost: 25, braceletsCost: 0, cadCreationCost: 20, constantCost: 25,
+            totalCost: 70, variantGrams: 5, sku,
+            details: {
+              baseGrams: 5, weightMultiplier: 1, metalPricePerGram: 2.5,
+              diamondCarats: 0, diamondPricePerCarat: 0, sideStoneCount: 0,
+              hasCenter: false, isBracelet: false
+            }
+          };
 
-      const row: ShopifyRow = {
+      const row: ShopifyRowWithCosts = {
         Handle: handle,
         
         // Parent-only fields (blank for children)
@@ -213,7 +244,7 @@ export function generateShopifyRows(variants: VariantSeed[]): ShopifyRow[] {
         Type: isParent ? productInfo.type : '',
         Tags: isParent ? productInfo.tags : '',
         Published: isParent ? 'TRUE' : '',
-        'Image Src': isParent ? '' : '', // Would be populated with actual image URLs
+        'Image Src': isParent ? '' : '',
         'Image Position': isParent ? '1' : '',
         'Image Alt Text': isParent ? `${productInfo.title} jewelry` : '',
         
@@ -227,14 +258,14 @@ export function generateShopifyRows(variants: VariantSeed[]): ShopifyRow[] {
         'Option2 Value': isNoStones ? '' : calculateTotalCarat(variant),
         'Option3 Value': isNoStones || !variant.qualityCode ? '' : translateQuality(variant.qualityCode),
         
-        // Variant-specific fields
+        // Variant-specific fields with calculated costs
         'Variant SKU': sku,
-        'Variant Grams': '0', // Would be calculated from weight tables
+        'Variant Grams': toFixed2(costBreakdown.variantGrams),
         'Variant Inventory Tracker': 'shopify',
         'Variant Inventory Qty': '10',
         'Variant Inventory Policy': 'deny',
         'Variant Fulfillment Service': 'manual',
-        'Variant Price': '999.00', // Would be calculated from pricing rules
+        'Variant Price': toFixed2(costBreakdown.totalCost * 2.5), // 2.5x markup
         'Variant Compare At Price': '',
         'Variant Requires Shipping': 'TRUE',
         'Variant Taxable': 'TRUE',
@@ -242,7 +273,7 @@ export function generateShopifyRows(variants: VariantSeed[]): ShopifyRow[] {
         'Variant Image': '',
         'Variant Weight Unit': 'g',
         'Variant Tax Code': '',
-        'Cost per item': '499.50', // Would be calculated
+        'Cost per item': toFixed2(costBreakdown.totalCost),
         'Price / International': '',
         'Compare At Price / International': '',
         Status: 'active',
@@ -251,7 +282,7 @@ export function generateShopifyRows(variants: VariantSeed[]): ShopifyRow[] {
         'SEO Title': isParent ? `${productInfo.title} - ${productInfo.vendor}` : '',
         'SEO Description': isParent ? `Premium ${productInfo.title} from ${productInfo.vendor}. High-quality jewelry crafted with precision.` : '',
         
-        // Google Shopping fields (typically empty or parent-only)
+        // Google Shopping fields
         'Google Shopping / Google Product Category': isParent ? 'Apparel & Accessories > Jewelry' : '',
         'Google Shopping / Gender': '',
         'Google Shopping / Age Group': '',
@@ -266,7 +297,10 @@ export function generateShopifyRows(variants: VariantSeed[]): ShopifyRow[] {
         'Google Shopping / Custom Label 3': '',
         'Google Shopping / Custom Label 4': '',
         
-        'Gift Card': 'FALSE'
+        'Gift Card': 'FALSE',
+        
+        // Cost breakdown for analysis
+        costBreakdown
       };
 
       allRows.push(row);
@@ -274,6 +308,13 @@ export function generateShopifyRows(variants: VariantSeed[]): ShopifyRow[] {
   }
 
   return allRows;
+}
+
+/**
+ * Generate Shopify rows from variant seeds (backwards compatibility)
+ */
+export function generateShopifyRows(variants: VariantSeed[]): ShopifyRow[] {
+  return generateShopifyRowsWithCosts(variants).map(({ costBreakdown, ...row }) => row);
 }
 
 /**

@@ -250,7 +250,7 @@ export const useCSVStore = create<CSVStore>((set, get) => ({
   },
 
   generateShopifyCSV: async () => {
-    const { variantExpansion, addLog } = get();
+    const { variantExpansion, files, addLog } = get();
     
     if (!variantExpansion) {
       addLog('error', 'No variant expansion data available. Please upload and process input files first.');
@@ -258,12 +258,25 @@ export const useCSVStore = create<CSVStore>((set, get) => ({
     }
 
     try {
-      addLog('info', 'Generating Shopify CSV with parent-child pattern...');
+      addLog('info', 'Generating Shopify CSV with parent-child pattern and cost calculations...');
       
-      const { generateShopifyRows, shopifyRowsToCSV, validateShopifyRows } = await import('@/lib/shopify-generator');
+      const { generateShopifyRowsWithCosts, shopifyRowsToCSV, validateShopifyRows } = await import('@/lib/shopify-generator');
       
-      // Generate Shopify rows from variants
-      const shopifyRows = generateShopifyRows(variantExpansion.result.variants);
+      // Get rule sets for cost calculations
+      const naturalRules = files.naturalRules.ruleSet as RuleSet | undefined;
+      const labGrownRules = files.labGrownRules.ruleSet as RuleSet | undefined;
+      const noStonesRules = files.noStonesRules.ruleSet as NoStonesRuleSet | undefined;
+      
+      // Generate Shopify rows with costs
+      const shopifyRowsWithCosts = generateShopifyRowsWithCosts(
+        variantExpansion.result.variants,
+        naturalRules,
+        labGrownRules,
+        noStonesRules
+      );
+      
+      // Strip cost breakdown for CSV export
+      const shopifyRows = shopifyRowsWithCosts.map(({ costBreakdown, ...row }) => row);
       
       // Validate the structure
       const validation = validateShopifyRows(shopifyRows);
@@ -278,8 +291,13 @@ export const useCSVStore = create<CSVStore>((set, get) => ({
       
       set({ generatedCSV: csv });
       
+      // Calculate cost statistics
+      const totalCost = shopifyRowsWithCosts.reduce((sum, row) => sum + row.costBreakdown.totalCost, 0);
+      const avgCost = totalCost / shopifyRowsWithCosts.length;
+      
       addLog('success', `Generated Shopify CSV: ${validation.stats.totalRows} rows, ${validation.stats.totalHandles} products`);
       addLog('info', `Structure: ${validation.stats.parentRows} parent rows, ${validation.stats.childRows} child rows`);
+      addLog('info', `Cost analysis: Total $${totalCost.toFixed(2)}, Average $${avgCost.toFixed(2)} per variant`);
       
     } catch (error) {
       addLog('error', `Failed to generate Shopify CSV: ${error instanceof Error ? error.message : 'Unknown error'}`);
