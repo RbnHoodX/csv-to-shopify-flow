@@ -30,7 +30,6 @@ export interface ShopifyRow {
   Title: string;
   'Body (HTML)': string;
   Vendor: string;
-  'Product Category': string;
   Type: string;
   Tags: string;
   Published: string;
@@ -74,9 +73,19 @@ export interface ShopifyRow {
   'Variant Weight Unit': string;
   'Variant Tax Code': string;
   'Cost per item': string;
-  'Price / International': string;
-  'Compare At Price / International': string;
-  Status: string;
+  'Product Type': string;
+  'Core Number': string;
+  Category: string;
+  'Diamond Cost': string;
+  'Metal Cost': string;
+  'Side Stone': string;
+  'Center Stone': string;
+  Polish: string;
+  Bracelets: string;
+  'CAD Creation': string;
+  '25$': string;
+  'Title (duplicate)': string;
+  'Description (duplicate)': string;
 }
 
 export interface ShopifyRowWithCosts extends ShopifyRow {
@@ -282,6 +291,14 @@ function generateSKU(variant: VariantSeed, index: number): string {
 }
 
 /**
+ * Extract numeric suffix from SKU for sorting
+ */
+function extractSKUSuffix(sku: string): number {
+  const match = sku.match(/-(\d+)$/);
+  return match ? parseInt(match[1], 10) : 0;
+}
+
+/**
  * Generate Shopify rows from variant seeds with cost calculations
  */
 export function generateShopifyRowsWithCosts(
@@ -350,26 +367,20 @@ export function generateShopifyRowsWithCosts(
       const row: ShopifyRowWithCosts = {
         Handle: handle,
         
-        // Parent-only fields (blank for children) - Enhanced with new spec
+        // Parent-only fields (blank for children) - Following exact spec order
         Title: isParent ? productInfo.title : '',
         'Body (HTML)': isParent ? productInfo.bodyHTML : '',
         Vendor: isParent ? productInfo.vendor : '',
-        'Product Category': isParent ? 'Jewelry' : '',
         Type: isParent ? productInfo.type : '',
         Tags: isParent ? productInfo.tags : '',
         Published: isParent ? 'TRUE' : '',
-        'Image Src': isParent ? '' : '',
-        'Image Position': isParent ? '1' : '',
-        'Image Alt Text': isParent ? productInfo.title : '',
         
         // Option Names (parent-only, blank for No Stones)
         'Option1 Name': isParent && !isNoStones ? 'Metal/Color' : '',
-        'Option2 Name': isParent && !isNoStones ? 'Total Carat' : '',
-        'Option3 Name': isParent && !isNoStones ? 'Diamond Quality' : '',
-        
-        // Option Values (all variants, blank for No Stones except metal)
         'Option1 Value': isNoStones ? '' : translateMetal(variant.metalCode),
+        'Option2 Name': isParent && !isNoStones ? 'Total Carat' : '',
         'Option2 Value': isNoStones ? '' : calculateTotalCarat(variant),
+        'Option3 Name': isParent && !isNoStones ? 'Diamond Quality' : '',
         'Option3 Value': isNoStones || !variant.qualityCode ? '' : translateQuality(variant.qualityCode),
         
         // Variant-specific fields with calculated costs
@@ -384,13 +395,12 @@ export function generateShopifyRowsWithCosts(
         'Variant Requires Shipping': 'TRUE',
         'Variant Taxable': 'TRUE',
         'Variant Barcode': '',
-        'Variant Image': '',
-        'Variant Weight Unit': 'g',
-        'Variant Tax Code': '',
-        'Cost per item': toFixed2(costBreakdown.totalCost),
-        'Price / International': '',
-        'Compare At Price / International': '',
-        Status: 'active',
+        
+        // Image fields
+        'Image Src': isParent ? '' : '',
+        'Image Position': isParent ? '1' : '',
+        'Image Alt Text': isParent ? productInfo.title : '',
+        'Gift Card': 'FALSE',
         
         // Enhanced SEO fields (parent-only)
         'SEO Title': seoTitle,
@@ -411,7 +421,30 @@ export function generateShopifyRowsWithCosts(
         'Google Shopping / Custom Label 3': '',
         'Google Shopping / Custom Label 4': '',
         
-        'Gift Card': 'FALSE',
+        // Additional variant fields
+        'Variant Image': '',
+        'Variant Weight Unit': 'g',
+        'Variant Tax Code': '',
+        'Cost per item': toFixed2(costBreakdown.totalCost),
+        
+        // New spec fields
+        'Product Type': isParent ? productInfo.type : '',
+        'Core Number': variant.core,
+        Category: isParent ? trimAll(firstVariant.inputRowRef['Category'] || 'Jewelry') : '',
+        
+        // Cost breakdown fields
+        'Diamond Cost': toFixed2(costBreakdown.diamondCost),
+        'Metal Cost': toFixed2(costBreakdown.metalCost),
+        'Side Stone': toFixed2(costBreakdown.sideStoneCost),
+        'Center Stone': toFixed2(costBreakdown.centerStoneCost),
+        Polish: toFixed2(costBreakdown.polishCost),
+        Bracelets: toFixed2(costBreakdown.braceletsCost),
+        'CAD Creation': toFixed2(costBreakdown.cadCreationCost),
+        '25$': toFixed2(costBreakdown.constantCost),
+        
+        // Duplicate fields per spec
+        'Title (duplicate)': isParent ? productInfo.title : '',
+        'Description (duplicate)': isParent ? productInfo.bodyHTML : '',
         
         // Cost breakdown for analysis
         costBreakdown
@@ -420,6 +453,14 @@ export function generateShopifyRowsWithCosts(
       allRows.push(row);
     });
   }
+
+  // Sort final rows deterministically by Handle, then by SKU suffix
+  allRows.sort((a, b) => {
+    if (a.Handle !== b.Handle) {
+      return a.Handle.localeCompare(b.Handle);
+    }
+    return extractSKUSuffix(a['Variant SKU']) - extractSKUSuffix(b['Variant SKU']);
+  });
 
   return allRows;
 }
@@ -432,17 +473,80 @@ export function generateShopifyRows(variants: VariantSeed[]): ShopifyRow[] {
 }
 
 /**
- * Convert Shopify rows to CSV string
+ * Convert Shopify rows to CSV string with exact header order per spec
  */
 export function shopifyRowsToCSV(rows: ShopifyRow[]): string {
   if (rows.length === 0) return '';
 
-  const headers = Object.keys(rows[0]);
+  // Exact header order per specification
+  const headers = [
+    'Handle',
+    'Title',
+    'Body (HTML)',
+    'Vendor',
+    'Type',
+    'Tags',
+    'Published',
+    'Option1 Name',
+    'Option1 Value',
+    'Option2 Name',
+    'Option2 Value',
+    'Option3 Name',
+    'Option3 Value',
+    'Variant SKU',
+    'Variant Grams',
+    'Variant Inventory Tracker',
+    'Variant Inventory Qty',
+    'Variant Inventory Policy',
+    'Variant Fulfillment Service',
+    'Variant Price',
+    'Variant Compare At Price',
+    'Variant Requires Shipping',
+    'Variant Taxable',
+    'Variant Barcode',
+    'Image Src',
+    'Image Position',
+    'Image Alt Text',
+    'Gift Card',
+    'SEO Title',
+    'SEO Description',
+    'Google Shopping / Google Product Category',
+    'Google Shopping / Gender',
+    'Google Shopping / Age Group',
+    'Google Shopping / MPN',
+    'Google Shopping / AdWords Grouping',
+    'Google Shopping / AdWords Labels',
+    'Google Shopping / Condition',
+    'Google Shopping / Custom Product',
+    'Google Shopping / Custom Label 0',
+    'Google Shopping / Custom Label 1',
+    'Google Shopping / Custom Label 2',
+    'Google Shopping / Custom Label 3',
+    'Google Shopping / Custom Label 4',
+    'Variant Image',
+    'Variant Weight Unit',
+    'Variant Tax Code',
+    'Cost per item',
+    'Product Type',
+    'Core Number',
+    'Category',
+    'Diamond Cost',
+    'Metal Cost',
+    'Side Stone',
+    'Center Stone',
+    'Polish',
+    'Bracelets',
+    'CAD Creation',
+    '25$',
+    'Title (duplicate)',
+    'Description (duplicate)'
+  ];
+
   const csvRows = [headers.join(',')];
 
   for (const row of rows) {
     const values = headers.map(header => {
-      const value = row[header as keyof ShopifyRow];
+      const value = row[header as keyof ShopifyRow] || '';
       // Escape quotes and wrap in quotes if contains comma, quote, or newline
       const escaped = String(value).replace(/"/g, '""');
       return /[",\n\r]/.test(escaped) ? `"${escaped}"` : escaped;
