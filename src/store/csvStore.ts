@@ -47,6 +47,7 @@ interface CSVStore {
   };
   logs: LogEntry[];
   generatedCSV: string;
+  shopifyRowsWithCosts?: any[]; // For preview functionality
   uploadFile: (fileType: keyof CSVStore['files'], file: File) => Promise<void>;
   removeFile: (fileType: keyof CSVStore['files']) => void;
   addLog: (level: LogEntry['level'], message: string) => void;
@@ -250,22 +251,63 @@ export const useCSVStore = create<CSVStore>((set, get) => ({
   },
 
   generateShopifyCSV: async () => {
-    const { variantExpansion, files, addLog } = get();
+    const { variantExpansion, files, addLog, clearLogs } = get();
     
-    if (!variantExpansion) {
-      addLog('error', 'No variant expansion data available. Please upload and process input files first.');
+    // Clear previous logs for new generation
+    clearLogs();
+    
+    addLog('info', '🚀 Starting Shopify CSV generation pipeline...');
+    
+    // Stage 1: Validate 4 files present
+    addLog('info', '📋 Stage 1: Validating input files...');
+    const requiredFiles = ['inputTest', 'naturalRules', 'labGrownRules', 'noStonesRules'] as const;
+    const missingFiles = requiredFiles.filter(fileType => !files[fileType].rawText);
+    
+    if (missingFiles.length > 0) {
+      addLog('error', `❌ Missing required files: ${missingFiles.join(', ')}`);
       return;
     }
+    
+    addLog('success', '✅ All 4 files validated successfully');
+    
+    // Stage 2: Build rule sets and lookups
+    addLog('info', '🔧 Stage 2: Building rule sets and lookups...');
+    const naturalRules = files.naturalRules.ruleSet as RuleSet | undefined;
+    const labGrownRules = files.labGrownRules.ruleSet as RuleSet | undefined;
+    const noStonesRules = files.noStonesRules.ruleSet as NoStonesRuleSet | undefined;
+    
+    let ruleSetWarnings = 0;
+    if (!naturalRules?.labor) {
+      addLog('warning', '⚠️ Natural rules labor table missing - using defaults');
+      ruleSetWarnings++;
+    }
+    if (!labGrownRules?.labor) {
+      addLog('warning', '⚠️ Lab grown rules labor table missing - using defaults');
+      ruleSetWarnings++;
+    }
+    if (!noStonesRules?.metalsA) {
+      addLog('warning', '⚠️ No stones rules metals table missing - using defaults');
+      ruleSetWarnings++;
+    }
+    
+    addLog('info', `📊 Rule sets built - ${ruleSetWarnings} warnings for missing lookups`);
+    
+    // Stage 3: Validate variant expansion
+    addLog('info', '🔄 Stage 3: Validating variant expansion data...');
+    if (!variantExpansion) {
+      addLog('error', '❌ No variant expansion data available. Please process input files first.');
+      return;
+    }
+    
+    const variantCount = variantExpansion.result.variants.length;
+    const handleCount = new Set(variantExpansion.result.variants.map(v => v.handle)).size;
+    addLog('success', `✅ Variant expansion validated: ${variantCount} variants across ${handleCount} products`);
 
     try {
-      addLog('info', 'Generating Shopify CSV with parent-child pattern and cost calculations...');
+      // Stage 4: Compute grams/costs/prices
+      addLog('info', '💰 Stage 4: Computing costs and pricing...');
       
       const { generateShopifyRowsWithCosts, shopifyRowsToCSV, validateShopifyRows } = await import('@/lib/shopify-generator');
-      
-      // Get rule sets for cost calculations
-      const naturalRules = files.naturalRules.ruleSet as RuleSet | undefined;
-      const labGrownRules = files.labGrownRules.ruleSet as RuleSet | undefined;
-      const noStonesRules = files.noStonesRules.ruleSet as NoStonesRuleSet | undefined;
       
       // Generate Shopify rows with costs
       const shopifyRowsWithCosts = generateShopifyRowsWithCosts(
@@ -275,6 +317,24 @@ export const useCSVStore = create<CSVStore>((set, get) => ({
         noStonesRules
       );
       
+      // Calculate cost statistics
+      const totalCost = shopifyRowsWithCosts.reduce((sum, row) => sum + row.costBreakdown.totalCost, 0);
+      const avgCost = totalCost / shopifyRowsWithCosts.length;
+      const minCost = Math.min(...shopifyRowsWithCosts.map(row => row.costBreakdown.totalCost));
+      const maxCost = Math.max(...shopifyRowsWithCosts.map(row => row.costBreakdown.totalCost));
+      
+      addLog('success', `✅ Cost calculations complete - Average: $${avgCost.toFixed(2)}, Range: $${minCost.toFixed(2)}-$${maxCost.toFixed(2)}`);
+      
+      // Stage 5: Assemble parent/child rows with meta/SEO/Google
+      addLog('info', '🏗️ Stage 5: Assembling parent-child rows with metadata...');
+      const parentRows = shopifyRowsWithCosts.filter(row => row.Title).length;
+      const childRows = shopifyRowsWithCosts.filter(row => !row.Title).length;
+      
+      addLog('success', `✅ Row assembly complete - ${parentRows} parent rows, ${childRows} child rows`);
+      
+      // Stage 6: Serialize CSV with locked header order
+      addLog('info', '📄 Stage 6: Serializing CSV with spec-compliant headers...');
+      
       // Strip cost breakdown for CSV export
       const shopifyRows = shopifyRowsWithCosts.map(({ costBreakdown, ...row }) => row);
       
@@ -282,25 +342,37 @@ export const useCSVStore = create<CSVStore>((set, get) => ({
       const validation = validateShopifyRows(shopifyRows);
       
       if (!validation.isValid) {
-        addLog('error', `Shopify CSV validation failed: ${validation.errors.join(', ')}`);
+        addLog('error', `❌ Shopify CSV validation failed: ${validation.errors.join(', ')}`);
         return;
       }
       
-      // Convert to CSV
+      // Convert to CSV with exact header order
       const csv = shopifyRowsToCSV(shopifyRows);
       
-      set({ generatedCSV: csv });
+      addLog('success', `✅ CSV serialization complete - ${csv.split('\n').length - 1} data rows`);
       
-      // Calculate cost statistics
-      const totalCost = shopifyRowsWithCosts.reduce((sum, row) => sum + row.costBreakdown.totalCost, 0);
-      const avgCost = totalCost / shopifyRowsWithCosts.length;
+      // Stage 7: Final validation and stats
+      addLog('info', '📊 Stage 7: Final validation and statistics...');
       
-      addLog('success', `Generated Shopify CSV: ${validation.stats.totalRows} rows, ${validation.stats.totalHandles} products`);
-      addLog('info', `Structure: ${validation.stats.parentRows} parent rows, ${validation.stats.childRows} child rows`);
-      addLog('info', `Cost analysis: Total $${totalCost.toFixed(2)}, Average $${avgCost.toFixed(2)} per variant`);
+      set({ 
+        generatedCSV: csv,
+        shopifyRowsWithCosts // Store for preview
+      });
+      
+      addLog('success', `🎉 Pipeline complete! Generated Shopify CSV ready for import`);
+      addLog('info', `📈 Final stats: ${validation.stats.totalRows} total rows, ${validation.stats.totalHandles} unique products`);
+      addLog('info', `💎 Cost summary: Total $${totalCost.toFixed(2)} across all variants`);
+      
+      // Check for any data quality issues
+      const noSKURows = shopifyRows.filter(row => !row['Variant SKU']).length;
+      const noPriceRows = shopifyRows.filter(row => !row['Variant Price'] || row['Variant Price'] === '0.00').length;
+      
+      if (noSKURows > 0) addLog('warning', `⚠️ ${noSKURows} rows missing SKU`);
+      if (noPriceRows > 0) addLog('warning', `⚠️ ${noPriceRows} rows with zero/missing price`);
       
     } catch (error) {
-      addLog('error', `Failed to generate Shopify CSV: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      addLog('error', `❌ Pipeline failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('Generation pipeline error:', error);
     }
   },
 }));
