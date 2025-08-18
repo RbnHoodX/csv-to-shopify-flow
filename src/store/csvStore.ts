@@ -1,10 +1,11 @@
 import { create } from 'zustand';
-import Papa from 'papaparse';
+import { parseCsv, normalizeRow, type ParsedCSV } from '@/lib/csv-parser';
 
 export type CSVFile = {
   name: string;
   rawText: string;
   parsedRows: any[];
+  normalizedRows: Record<string, any>[];
   rowCount: number;
   headers: string[];
   uploaded: boolean;
@@ -37,6 +38,7 @@ const createEmptyFile = (name: string): CSVFile => ({
   name,
   rawText: '',
   parsedRows: [],
+  normalizedRows: [],
   rowCount: 0,
   headers: [],
   uploaded: false,
@@ -57,16 +59,10 @@ export const useCSVStore = create<CSVStore>((set, get) => ({
     
     try {
       const text = await file.text();
+      const parsed: ParsedCSV = parseCsv(text);
       
-      const parsed = Papa.parse(text, {
-        header: true,
-        skipEmptyLines: true,
-        transformHeader: (header) => header.trim(),
-      });
-
-      if (parsed.errors.length > 0) {
-        addLog('warning', `Parsing warnings for ${file.name}: ${parsed.errors.map(e => e.message).join(', ')}`);
-      }
+      // Normalize all rows (preserve originals, don't mutate source)
+      const normalizedRows = parsed.rows.map(row => normalizeRow(row));
 
       set(state => ({
         files: {
@@ -74,17 +70,20 @@ export const useCSVStore = create<CSVStore>((set, get) => ({
           [fileType]: {
             name: file.name,
             rawText: text,
-            parsedRows: parsed.data,
-            rowCount: parsed.data.length,
-            headers: parsed.meta.fields || [],
+            parsedRows: parsed.rows,
+            normalizedRows,
+            rowCount: parsed.rows.length,
+            headers: parsed.headers,
             uploaded: true,
           }
         }
       }));
 
-      addLog('success', `Successfully uploaded ${file.name} with ${parsed.data.length} rows`);
+      addLog('success', `Successfully parsed ${file.name}: ${parsed.rows.length} rows, ${parsed.headers.length} columns`);
+      addLog('info', `Normalized ${normalizedRows.length} rows with validation`);
+      
     } catch (error) {
-      addLog('error', `Failed to upload ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      addLog('error', `Failed to parse ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   },
 

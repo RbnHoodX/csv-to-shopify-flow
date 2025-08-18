@@ -2,6 +2,7 @@ import React from 'react';
 import { FileUpload } from '@/components/FileUpload';
 import { GenerationLog } from '@/components/GenerationLog';
 import { CSVExport } from '@/components/CSVExport';
+import { DebugPanel } from '@/components/DebugPanel';
 
 const Index = () => {
   return (
@@ -14,9 +15,9 @@ const Index = () => {
           </p>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
           {/* File Uploads Section */}
-          <div className="lg:col-span-2 space-y-4">
+          <div className="xl:col-span-2 space-y-4">
             <h2 className="text-2xl font-semibold mb-4">1. Upload CSV Files</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FileUpload fileType="inputTest" title="Input test.csv" />
@@ -30,6 +31,12 @@ const Index = () => {
           <div className="space-y-4">
             <h2 className="text-2xl font-semibold mb-4">2. Activity Log</h2>
             <GenerationLog />
+          </div>
+
+          {/* Debug Panel */}
+          <div className="space-y-4">
+            <h2 className="text-2xl font-semibold mb-4">Debug</h2>
+            <DebugPanel />
           </div>
         </div>
 
