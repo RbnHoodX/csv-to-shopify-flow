@@ -1,16 +1,92 @@
+import { trimAll, toNum, toFixed2, ctStr } from './csv-parser';
 import type { VariantSeed } from './variant-expansion';
 import type { RuleSet, NoStonesRuleSet } from './rulebook-parser';
-import type { CostBreakdown } from './cost-calculator';
-import { calculateCostBreakdown, generateSKUWithRunningIndex } from './cost-calculator';
-import { trimAll, toNum, toFixed2, ctStr } from './csv-parser';
-import { METAL_TRANSLATIONS, QUALITY_TRANSLATIONS, serializeShopifyRows } from '@/utils';
+import { calculateCostBreakdown, generateSKUWithRunningIndex, type CostBreakdown } from './cost-calculator';
 
-// Import compatible types
-import type { ShopifyRow } from '@/types/core';
+// Translation tables (extendable constants)
+export const METAL_TRANSLATIONS: Record<string, string> = {
+  '14W': '14KT White Gold',
+  '14Y': '14KT Yellow Gold',
+  '14R': '14KT Rose Gold',
+  '18W': '18KT White Gold',
+  '18Y': '18KT Yellow Gold',
+  '18R': '18KT Rose Gold',
+  'PLT': 'Platinum'
+};
 
-// Re-export for backward compatibility
-export type { ShopifyRow } from '@/types/core';
-export { METAL_TRANSLATIONS, QUALITY_TRANSLATIONS };
+export const QUALITY_TRANSLATIONS: Record<string, string> = {
+  'FG': 'F-G/VS (Excellent)',
+  'GH': 'G-H/VS (Very Good)',
+  'HI': 'H-I/SI (Good)',
+  'IJ': 'I-J/SI (Fair)',
+  'VS1': 'VS1 (Very Good)',
+  'VS2': 'VS2 (Good)',
+  'SI1': 'SI1 (Fair)',
+  'SI2': 'SI2 (Fair)'
+};
+
+export interface ShopifyRow {
+  Handle: string;
+  Title: string;
+  'Body (HTML)': string;
+  Vendor: string;
+  Type: string;
+  Tags: string;
+  Published: string;
+  'Option1 Name': string;
+  'Option1 Value': string;
+  'Option2 Name': string;
+  'Option2 Value': string;
+  'Option3 Name': string;
+  'Option3 Value': string;
+  'Variant SKU': string;
+  'Variant Grams': string;
+  'Variant Inventory Tracker': string;
+  'Variant Inventory Qty': string;
+  'Variant Inventory Policy': string;
+  'Variant Fulfillment Service': string;
+  'Variant Price': string;
+  'Variant Compare At Price': string;
+  'Variant Requires Shipping': string;
+  'Variant Taxable': string;
+  'Variant Barcode': string;
+  'Image Src': string;
+  'Image Position': string;
+  'Image Alt Text': string;
+  'Gift Card': string;
+  'SEO Title': string;
+  'SEO Description': string;
+  'Google Shopping / Google Product Category': string;
+  'Google Shopping / Gender': string;
+  'Google Shopping / Age Group': string;
+  'Google Shopping / MPN': string;
+  'Google Shopping / AdWords Grouping': string;
+  'Google Shopping / AdWords Labels': string;
+  'Google Shopping / Condition': string;
+  'Google Shopping / Custom Product': string;
+  'Google Shopping / Custom Label 0': string;
+  'Google Shopping / Custom Label 1': string;
+  'Google Shopping / Custom Label 2': string;
+  'Google Shopping / Custom Label 3': string;
+  'Google Shopping / Custom Label 4': string;
+  'Variant Image': string;
+  'Variant Weight Unit': string;
+  'Variant Tax Code': string;
+  'Cost per item': string;
+  'Product Type': string;
+  'Core Number': string;
+  Category: string;
+  'Diamond Cost': string;
+  'Metal Cost': string;
+  'Side Stone': string;
+  'Center Stone': string;
+  Polish: string;
+  Bracelets: string;
+  'CAD Creation': string;
+  '25$': string;
+  'Title (duplicate)': string;
+  'Description (duplicate)': string;
+}
 
 export interface ShopifyRowWithCosts extends ShopifyRow {
   costBreakdown: CostBreakdown;
@@ -205,6 +281,16 @@ function createProductInfo(variants: VariantSeed[]) {
 }
 
 /**
+ * Generate SKU for variant
+ */
+function generateSKU(variant: VariantSeed, index: number): string {
+  const base = variant.core.replace(/[^A-Za-z0-9]/g, '');
+  const metal = variant.metalCode;
+  const suffix = String(index + 1).padStart(3, '0');
+  return `${base}-${metal}-${suffix}`;
+}
+
+/**
  * Extract numeric suffix from SKU for sorting
  */
 function extractSKUSuffix(sku: string): number {
@@ -390,7 +476,85 @@ export function generateShopifyRows(variants: VariantSeed[]): ShopifyRow[] {
  * Convert Shopify rows to CSV string with exact header order per spec
  */
 export function shopifyRowsToCSV(rows: ShopifyRow[]): string {
-  return serializeShopifyRows(rows);
+  if (rows.length === 0) return '';
+
+  // Exact header order per specification
+  const headers = [
+    'Handle',
+    'Title',
+    'Body (HTML)',
+    'Vendor',
+    'Type',
+    'Tags',
+    'Published',
+    'Option1 Name',
+    'Option1 Value',
+    'Option2 Name',
+    'Option2 Value',
+    'Option3 Name',
+    'Option3 Value',
+    'Variant SKU',
+    'Variant Grams',
+    'Variant Inventory Tracker',
+    'Variant Inventory Qty',
+    'Variant Inventory Policy',
+    'Variant Fulfillment Service',
+    'Variant Price',
+    'Variant Compare At Price',
+    'Variant Requires Shipping',
+    'Variant Taxable',
+    'Variant Barcode',
+    'Image Src',
+    'Image Position',
+    'Image Alt Text',
+    'Gift Card',
+    'SEO Title',
+    'SEO Description',
+    'Google Shopping / Google Product Category',
+    'Google Shopping / Gender',
+    'Google Shopping / Age Group',
+    'Google Shopping / MPN',
+    'Google Shopping / AdWords Grouping',
+    'Google Shopping / AdWords Labels',
+    'Google Shopping / Condition',
+    'Google Shopping / Custom Product',
+    'Google Shopping / Custom Label 0',
+    'Google Shopping / Custom Label 1',
+    'Google Shopping / Custom Label 2',
+    'Google Shopping / Custom Label 3',
+    'Google Shopping / Custom Label 4',
+    'Variant Image',
+    'Variant Weight Unit',
+    'Variant Tax Code',
+    'Cost per item',
+    'Product Type',
+    'Core Number',
+    'Category',
+    'Diamond Cost',
+    'Metal Cost',
+    'Side Stone',
+    'Center Stone',
+    'Polish',
+    'Bracelets',
+    'CAD Creation',
+    '25$',
+    'Title (duplicate)',
+    'Description (duplicate)'
+  ];
+
+  const csvRows = [headers.join(',')];
+
+  for (const row of rows) {
+    const values = headers.map(header => {
+      const value = row[header as keyof ShopifyRow] || '';
+      // Escape quotes and wrap in quotes if contains comma, quote, or newline
+      const escaped = String(value).replace(/"/g, '""');
+      return /[",\n\r]/.test(escaped) ? `"${escaped}"` : escaped;
+    });
+    csvRows.push(values.join(','));
+  }
+
+  return csvRows.join('\n');
 }
 
 /**
