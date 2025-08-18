@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { parseCsv, normalizeRow, type ParsedCSV } from '@/lib/csv-parser';
 import { extractRuleSets, extractNoStonesRuleSets, logRuleSetStats, type RuleSet, type NoStonesRuleSet } from '@/lib/rulebook-parser';
+import { processInputData, type GroupSummary } from '@/lib/input-processor';
 
 export type CSVFile = {
   name: string;
@@ -27,6 +28,18 @@ interface CSVStore {
     labGrownRules: CSVFile;
     noStonesRules: CSVFile;
   };
+  inputAnalysis?: {
+    summary: GroupSummary[];
+    stats: {
+      totalRows: number;
+      totalGroups: number;
+      uniqueGroups: number;
+      repeatingGroups: number;
+      naturalItems: number;
+      labGrownItems: number;
+      noStonesItems: number;
+    };
+  };
   logs: LogEntry[];
   generatedCSV: string;
   uploadFile: (fileType: keyof CSVStore['files'], file: File) => Promise<void>;
@@ -34,6 +47,7 @@ interface CSVStore {
   addLog: (level: LogEntry['level'], message: string) => void;
   clearLogs: () => void;
   generateShopifyCSV: () => Promise<void>;
+  processInputAnalysis: () => void;
 }
 
 const createEmptyFile = (name: string): CSVFile => ({
@@ -57,7 +71,7 @@ export const useCSVStore = create<CSVStore>((set, get) => ({
   generatedCSV: '',
 
   uploadFile: async (fileType, file) => {
-    const { addLog } = get();
+    const { addLog, processInputAnalysis } = get();
     
     try {
       const text = await file.text();
@@ -104,6 +118,11 @@ export const useCSVStore = create<CSVStore>((set, get) => ({
       addLog('success', `Successfully parsed ${file.name}: ${parsed.rows.length} rows, ${parsed.headers.length} columns`);
       addLog('info', `Normalized ${normalizedRows.length} rows with validation`);
       
+      // Process input analysis if this was the input file or if input file exists
+      if (fileType === 'inputTest' || get().files.inputTest.uploaded) {
+        processInputAnalysis();
+      }
+      
     } catch (error) {
       addLog('error', `Failed to parse ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -120,6 +139,41 @@ export const useCSVStore = create<CSVStore>((set, get) => ({
     }));
 
     get().addLog('info', `Removed ${fileName}`);
+    
+    // Clear input analysis if input test file was removed
+    if (fileType === 'inputTest') {
+      set({ inputAnalysis: undefined });
+    }
+  },
+
+  processInputAnalysis: () => {
+    const { files, addLog } = get();
+    
+    if (!files.inputTest.uploaded) {
+      set({ inputAnalysis: undefined });
+      return;
+    }
+
+    try {
+      const naturalRules = files.naturalRules.ruleSet as RuleSet | undefined;
+      const labGrownRules = files.labGrownRules.ruleSet as RuleSet | undefined;
+      const noStonesRules = files.noStonesRules.ruleSet as NoStonesRuleSet | undefined;
+      
+      const analysis = processInputData(
+        files.inputTest.parsedRows,
+        naturalRules,
+        labGrownRules,
+        noStonesRules
+      );
+
+      set({ inputAnalysis: analysis });
+      
+      addLog('success', `Input analysis complete: ${analysis.stats.totalGroups} core numbers, ${analysis.stats.uniqueGroups} unique, ${analysis.stats.repeatingGroups} repeating`);
+      addLog('info', `Rulebook distribution: Natural=${analysis.stats.naturalItems}, LabGrown=${analysis.stats.labGrownItems}, NoStones=${analysis.stats.noStonesItems}`);
+      
+    } catch (error) {
+      addLog('error', `Failed to analyze input data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   },
 
   addLog: (level, message) => {

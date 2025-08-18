@@ -3,8 +3,12 @@ import { FileUpload } from '@/components/FileUpload';
 import { GenerationLog } from '@/components/GenerationLog';
 import { CSVExport } from '@/components/CSVExport';
 import { DebugPanel } from '@/components/DebugPanel';
+import { InputSummaryTable } from '@/components/InputSummaryTable';
+import { useCSVStore } from '@/store/csvStore';
 
 const Index = () => {
+  const { inputAnalysis } = useCSVStore();
+
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -39,6 +43,17 @@ const Index = () => {
             <DebugPanel />
           </div>
         </div>
+
+        {/* Input Analysis Section */}
+        {inputAnalysis && (
+          <div className="space-y-4">
+            <h2 className="text-2xl font-semibold mb-4">2.5. Input Analysis</h2>
+            <InputSummaryTable 
+              summary={inputAnalysis.summary}
+              stats={inputAnalysis.stats}
+            />
+          </div>
+        )}
 
         {/* Export Section */}
         <div className="space-y-4">
