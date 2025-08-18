@@ -250,52 +250,39 @@ export const useCSVStore = create<CSVStore>((set, get) => ({
   },
 
   generateShopifyCSV: async () => {
-    const { files, addLog } = get();
+    const { variantExpansion, addLog } = get();
     
-    // Check if all required files are uploaded
-    const requiredFiles = ['inputTest', 'naturalRules', 'labGrownRules', 'noStonesRules'] as const;
-    const missingFiles = requiredFiles.filter(key => !files[key].uploaded);
-    
-    if (missingFiles.length > 0) {
-      addLog('error', `Cannot generate CSV. Missing files: ${missingFiles.map(key => files[key].name).join(', ')}`);
+    if (!variantExpansion) {
+      addLog('error', 'No variant expansion data available. Please upload and process input files first.');
       return;
     }
 
     try {
-      addLog('info', 'Starting Shopify CSV generation...');
+      addLog('info', 'Generating Shopify CSV with parent-child pattern...');
       
-      // Basic CSV generation logic (Base44 spec placeholder)
-      const headers = ['Handle', 'Title', 'Body (HTML)', 'Vendor', 'Product Category', 'Type', 'Tags', 'Published', 'Option1 Name', 'Option1 Value', 'Option2 Name', 'Option2 Value', 'Option3 Name', 'Option3 Value', 'Variant SKU', 'Variant Grams', 'Variant Inventory Tracker', 'Variant Inventory Qty', 'Variant Inventory Policy', 'Variant Fulfillment Service', 'Variant Price', 'Variant Compare At Price', 'Variant Requires Shipping', 'Variant Taxable', 'Variant Barcode', 'Image Src', 'Image Position', 'Image Alt Text', 'Gift Card', 'SEO Title', 'SEO Description', 'Google Shopping / Google Product Category', 'Google Shopping / Gender', 'Google Shopping / Age Group', 'Google Shopping / MPN', 'Google Shopping / AdWords Grouping', 'Google Shopping / AdWords Labels', 'Google Shopping / Condition', 'Google Shopping / Custom Product', 'Google Shopping / Custom Label 0', 'Google Shopping / Custom Label 1', 'Google Shopping / Custom Label 2', 'Google Shopping / Custom Label 3', 'Google Shopping / Custom Label 4', 'Variant Image', 'Variant Weight Unit', 'Variant Tax Code', 'Cost per item', 'Price / International', 'Compare At Price / International', 'Status'];
+      const { generateShopifyRows, shopifyRowsToCSV, validateShopifyRows } = await import('@/lib/shopify-generator');
       
-      const csvRows = [headers.join(',')];
+      // Generate Shopify rows from variants
+      const shopifyRows = generateShopifyRows(variantExpansion.result.variants);
       
-      // Process input test data with rules (simplified for now)
-      files.inputTest.parsedRows.forEach((row, index) => {
-        const csvRow = headers.map(header => {
-          // Basic mapping logic - this would be expanded based on Base44 spec
-          switch (header) {
-            case 'Handle':
-              return `product-${index + 1}`;
-            case 'Title':
-              return row['Title'] || row['Product Name'] || `Product ${index + 1}`;
-            case 'Published':
-              return 'TRUE';
-            case 'Variant Price':
-              return row['Price'] || '0.00';
-            default:
-              return '';
-          }
-        });
-        csvRows.push(csvRow.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','));
-      });
+      // Validate the structure
+      const validation = validateShopifyRows(shopifyRows);
       
-      const generatedCSV = csvRows.join('\n');
+      if (!validation.isValid) {
+        addLog('error', `Shopify CSV validation failed: ${validation.errors.join(', ')}`);
+        return;
+      }
       
-      set({ generatedCSV });
-      addLog('success', `Generated Shopify CSV with ${files.inputTest.parsedRows.length} products`);
+      // Convert to CSV
+      const csv = shopifyRowsToCSV(shopifyRows);
+      
+      set({ generatedCSV: csv });
+      
+      addLog('success', `Generated Shopify CSV: ${validation.stats.totalRows} rows, ${validation.stats.totalHandles} products`);
+      addLog('info', `Structure: ${validation.stats.parentRows} parent rows, ${validation.stats.childRows} child rows`);
       
     } catch (error) {
-      addLog('error', `Failed to generate CSV: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      addLog('error', `Failed to generate Shopify CSV: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   },
 }));
