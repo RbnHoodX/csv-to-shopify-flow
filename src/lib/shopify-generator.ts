@@ -226,6 +226,7 @@ export function generateShopifyRowsWithCosts(
             diamondCost: 0, metalCost: 0, sideStoneCost: 0, centerStoneCost: 0,
             polishCost: 25, braceletsCost: 0, cadCreationCost: 20, constantCost: 25,
             totalCost: 70, variantGrams: 5, sku,
+            pricing: { cost: 70, multiplier: 2.5, variantPrice: 174.99, compareAtPrice: 280, marginSource: 'fallback' as const },
             details: {
               baseGrams: 5, weightMultiplier: 1, metalPricePerGram: 2.5,
               diamondCarats: 0, diamondPricePerCarat: 0, sideStoneCount: 0,
@@ -265,8 +266,8 @@ export function generateShopifyRowsWithCosts(
         'Variant Inventory Qty': '10',
         'Variant Inventory Policy': 'deny',
         'Variant Fulfillment Service': 'manual',
-        'Variant Price': toFixed2(costBreakdown.totalCost * 2.5), // 2.5x markup
-        'Variant Compare At Price': '',
+        'Variant Price': toFixed2(costBreakdown.pricing.variantPrice),
+        'Variant Compare At Price': toFixed2(costBreakdown.pricing.compareAtPrice),
         'Variant Requires Shipping': 'TRUE',
         'Variant Taxable': 'TRUE',
         'Variant Barcode': '',

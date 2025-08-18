@@ -1,6 +1,7 @@
 import { trimAll, toNum, toFixed2 } from './csv-parser';
 import type { VariantSeed } from './variant-expansion';
 import type { RuleSet, NoStonesRuleSet } from './rulebook-parser';
+import { calculatePricing, type PricingResult } from './pricing-calculator';
 
 export interface CostBreakdown {
   diamondCost: number;
@@ -14,6 +15,7 @@ export interface CostBreakdown {
   totalCost: number;
   variantGrams: number;
   sku: string;
+  pricing: PricingResult;
   details: {
     baseGrams: number;
     weightMultiplier: number;
@@ -264,6 +266,9 @@ export function calculateCostBreakdown(
     laborCalc.cadCreationCost +
     constantCost;
 
+  // Calculate pricing
+  const pricing = calculatePricing(totalCost, variant.inputRowRef, ruleSet);
+
   return {
     diamondCost: diamondCalc.cost,
     metalCost: metalCalc.cost,
@@ -276,6 +281,7 @@ export function calculateCostBreakdown(
     totalCost,
     variantGrams: gramsCalc.grams,
     sku,
+    pricing,
     details: {
       baseGrams: gramsCalc.baseGrams,
       weightMultiplier: gramsCalc.weightMultiplier,

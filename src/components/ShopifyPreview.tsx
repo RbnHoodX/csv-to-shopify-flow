@@ -20,6 +20,9 @@ interface ParsedRow {
 // Mock cost breakdown for preview (in real implementation this would come from the generator)
 const createMockCostBreakdown = (sku: string, price: string): CostBreakdown => {
   const totalCost = parseFloat(price) || 500;
+  const variantPrice = (totalCost * 2.5) - 0.01;
+  const compareAtPrice = totalCost * 4;
+  
   return {
     diamondCost: totalCost * 0.4,
     metalCost: totalCost * 0.3,
@@ -32,6 +35,13 @@ const createMockCostBreakdown = (sku: string, price: string): CostBreakdown => {
     totalCost,
     variantGrams: 5.5,
     sku,
+    pricing: {
+      cost: totalCost,
+      multiplier: 2.5,
+      variantPrice,
+      compareAtPrice,
+      marginSource: 'type_default' as const
+    },
     details: {
       baseGrams: 5.0,
       weightMultiplier: 1.1,
