@@ -6,6 +6,10 @@ export interface RuleSet {
   qualitiesI: string[]; // Qualities (center-present)
   metalsJ: string[]; // Metals (no-center)
   qualitiesK: string[]; // Qualities (no-center)
+  // Store actual G×H×I combinations from rulebook (not cartesian product)
+  centerCombinations: Array<{metal: string, center: string, quality: string}>;
+  // Store actual J×K combinations from rulebook  
+  noCenterCombinations: Array<{metal: string, quality: string}>;
   weightIndex: Map<string, number>; // Metal code → weight multiplier
   metalPrice: Map<string, number>; // Metal code → price per gram
   labor: Map<string, number>; // Labor type → cost
@@ -143,6 +147,8 @@ export function extractRuleSets(ruleRows: Record<string, string>[]): RuleSet {
       qualitiesI: [],
       metalsJ: [],
       qualitiesK: [],
+      centerCombinations: [],
+      noCenterCombinations: [],
       weightIndex: new Map(),
       metalPrice: new Map(),
       labor: new Map(),
@@ -165,6 +171,10 @@ export function extractRuleSets(ruleRows: Record<string, string>[]): RuleSet {
   const qualitiesI: string[] = [];
   const metalsJ: string[] = [];
   const qualitiesK: string[] = [];
+  
+  // Store actual combinations as they appear in rulebook
+  const centerCombinations: Array<{metal: string, center: string, quality: string}> = [];
+  const noCenterCombinations: Array<{metal: string, quality: string}> = [];
 
   // Process ALL rows to capture complete rule blocks (not just first 30)
   for (let i = 0; i < ruleRows.length; i++) {
@@ -218,6 +228,19 @@ export function extractRuleSets(ruleRows: Record<string, string>[]): RuleSet {
       const quality = trimAll(rowValues[colI]);
       if (quality) qualitiesI.push(quality);
     }
+    
+    // Extract actual G×H×I combinations from each row
+    if (metalsCell && sizesCell && qualityCell) {
+      const metals = splitMetalCodes(metalsCell);
+      const sizes = splitCenterSizes(sizesCell);
+      
+      // Create actual combinations for this row
+      for (const metal of metals) {
+        for (const center of sizes) {
+          centerCombinations.push({metal, center, quality: qualityCell});
+        }
+      }
+    }
 
     // Column J: Metals (no-center) - read entire block
     if (colJ < rowValues.length) {
@@ -225,6 +248,14 @@ export function extractRuleSets(ruleRows: Record<string, string>[]): RuleSet {
       if (metalsCell) {
         const metals = splitMetalCodes(metalsCell);
         metalsJ.push(...metals);
+        
+        // Extract actual J×K combinations
+        const qualityK = colK < rowValues.length ? trimAll(rowValues[colK]) : '';
+        if (qualityK) {
+          for (const metal of metals) {
+            noCenterCombinations.push({metal, quality: qualityK});
+          }
+        }
       }
     }
 
@@ -367,12 +398,21 @@ export function extractRuleSets(ruleRows: Record<string, string>[]): RuleSet {
   laborTable.forEach((value, key) => labor.set(key, value));
   margins.push(...marginTable);
 
+  console.log(`📊 Rulebook parsing complete:`);
+  console.log(`  - Unique metals G: ${uniqueMetalsG.length}`);
+  console.log(`  - Unique centers H: ${uniqueCentersH.length}`); 
+  console.log(`  - Unique qualities I: ${uniqueQualitiesI.length}`);
+  console.log(`  - Center combinations extracted: ${centerCombinations.length}`);
+  console.log(`  - No-center combinations extracted: ${noCenterCombinations.length}`);
+
   return {
     metalsG: uniqueMetalsG,
     centersH: uniqueCentersH,
     qualitiesI: uniqueQualitiesI,
     metalsJ: uniqueMetalsJ,
     qualitiesK: uniqueQualitiesK,
+    centerCombinations,
+    noCenterCombinations,
     weightIndex,
     metalPrice,
     labor,

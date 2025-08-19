@@ -63,7 +63,7 @@ function createHandle(inputRow: InputRow): string {
 
 /**
  * Expand variants for unique items with center carat
- * G × H × I combinations
+ * Use actual G×H×I combinations from rulebook (not cartesian product)
  */
 function expandUniqueCenterVariants(
   inputRow: InputRow,
@@ -78,31 +78,25 @@ function expandUniqueCenterVariants(
   
   if (isBridal) {
     console.log(`🔍 BRIDAL EXPANSION DEBUG - ${handle}:`);
-    console.log(`  - Metals G: ${ruleSet.metalsG.length} (${ruleSet.metalsG.slice(0, 3).join(', ')}, ...)`);
-    console.log(`  - Centers H: ${ruleSet.centersH.length} (${ruleSet.centersH.slice(0, 3).join(', ')}, ...)`);
-    console.log(`  - Qualities I: ${ruleSet.qualitiesI.length} (${ruleSet.qualitiesI.join(', ')})`);
-    console.log(`  - Expected total: ${ruleSet.metalsG.length} × ${ruleSet.centersH.length} × ${ruleSet.qualitiesI.length} = ${ruleSet.metalsG.length * ruleSet.centersH.length * ruleSet.qualitiesI.length}`);
+    console.log(`  - Available center combinations: ${ruleSet.centerCombinations.length}`);
+    console.log(`  - Sample combinations: ${ruleSet.centerCombinations.slice(0, 3).map(c => `${c.metal}×${c.center}×${c.quality}`).join(', ')}`);
   }
 
-  // Cartesian product G × H × I in rulebook order (preserve array order from CSV)
-  for (const metalCode of ruleSet.metalsG) {
-    for (const centerSize of ruleSet.centersH) {
-      for (const qualityCode of ruleSet.qualitiesI) {
-        variants.push({
-          handle,
-          core: inputRow.coreNumber,
-          scenario: 'Unique+Center',
-          metalCode,
-          centerSize,
-          qualityCode,
-          inputRowRef: inputRow
-        });
-      }
-    }
+  // Use actual G×H×I combinations from rulebook
+  for (const combo of ruleSet.centerCombinations) {
+    variants.push({
+      handle,
+      core: inputRow.coreNumber,
+      scenario: 'Unique+Center',
+      metalCode: combo.metal,
+      centerSize: combo.center,
+      qualityCode: combo.quality,
+      inputRowRef: inputRow
+    });
   }
   
   if (isBridal) {
-    console.log(`  ✅ Generated ${variants.length} variants for ${handle}`);
+    console.log(`  ✅ Generated ${variants.length} variants for ${handle} (using actual rulebook combinations)`);
   }
 
   return variants;
@@ -110,7 +104,7 @@ function expandUniqueCenterVariants(
 
 /**
  * Expand variants for unique items without center or repeating items
- * J × K combinations
+ * Use actual J×K combinations from rulebook (not cartesian product)
  */
 function expandNoCenterVariants(
   inputRow: InputRow,
@@ -120,18 +114,16 @@ function expandNoCenterVariants(
   const variants: VariantSeed[] = [];
   const handle = createHandle(inputRow);
 
-  // Cartesian product J × K in rulebook order (preserve array order from CSV)
-  for (const metalCode of ruleSet.metalsJ) {
-    for (const qualityCode of ruleSet.qualitiesK) {
-      variants.push({
-        handle,
-        core: inputRow.coreNumber,
-        scenario,
-        metalCode,
-        qualityCode,
-        inputRowRef: inputRow
-      });
-    }
+  // Use actual J×K combinations from rulebook
+  for (const combo of ruleSet.noCenterCombinations) {
+    variants.push({
+      handle,
+      core: inputRow.coreNumber,
+      scenario,
+      metalCode: combo.metal,
+      qualityCode: combo.quality,
+      inputRowRef: inputRow
+    });
   }
 
   return variants;
@@ -230,21 +222,21 @@ function expandGroupVariants(
     const inputRow = groupSummary.rows[0];
     
     if (hasCenterCarat(inputRow)) {
-      // Unique + Center: G × H × I
-      const expectedVariants = mainRuleSet.metalsG.length * mainRuleSet.centersH.length * mainRuleSet.qualitiesI.length;
-      console.log(`  💎 Unique+Center: ${mainRuleSet.metalsG.length} × ${mainRuleSet.centersH.length} × ${mainRuleSet.qualitiesI.length} = ${expectedVariants} variants`);
-      return expandUniqueCenterVariants(inputRow, mainRuleSet);
+        // Unique + Center: actual G×H×I combinations from rulebook
+        const actualCombinations = mainRuleSet.centerCombinations.length;
+        console.log(`  💎 Unique+Center: ${actualCombinations} actual combinations from rulebook`);
+        return expandUniqueCenterVariants(inputRow, mainRuleSet);
     } else {
-      // Unique + No Center: J × K
-      const expectedVariants = mainRuleSet.metalsJ.length * mainRuleSet.qualitiesK.length;
-      console.log(`  🔹 Unique+NoCenter: ${mainRuleSet.metalsJ.length} × ${mainRuleSet.qualitiesK.length} = ${expectedVariants} variants`);
-      return expandNoCenterVariants(inputRow, mainRuleSet, 'Unique+NoCenter');
+        // Unique + No Center: actual J×K combinations from rulebook
+        const actualCombinations = mainRuleSet.noCenterCombinations.length;
+        console.log(`  🔹 Unique+NoCenter: ${actualCombinations} actual combinations from rulebook`);
+        return expandNoCenterVariants(inputRow, mainRuleSet, 'Unique+NoCenter');
     }
   } else {
-    // Repeating: J × K for each base row
-    const variantsPerRow = mainRuleSet.metalsJ.length * mainRuleSet.qualitiesK.length;
-    const expectedTotal = groupSummary.count * variantsPerRow;
-    console.log(`  🔄 Repeating: ${groupSummary.count} rows × ${variantsPerRow} variants each = ${expectedTotal} total variants`);
+      // Repeating: actual J×K combinations for each base row
+      const variantsPerRow = mainRuleSet.noCenterCombinations.length;
+      const expectedTotal = groupSummary.count * variantsPerRow;
+      console.log(`  🔄 Repeating: ${groupSummary.count} rows × ${variantsPerRow} actual combinations each = ${expectedTotal} total variants`);
     
     for (const inputRow of groupSummary.rows) {
       const rowVariants = expandNoCenterVariants(inputRow, mainRuleSet, 'Repeating');
@@ -350,15 +342,15 @@ export function calculateExpectedCounts(
       if (groupSummary.isUnique) {
         const inputRow = groupSummary.rows[0];
         if (hasCenterCarat(inputRow)) {
-          // |G| × |H| × |I|
-          expected[handle] = mainRuleSet.metalsG.length * mainRuleSet.centersH.length * mainRuleSet.qualitiesI.length;
+          // Use actual G×H×I combinations count
+          expected[handle] = mainRuleSet.centerCombinations.length;
         } else {
-          // |J| × |K|
-          expected[handle] = mainRuleSet.metalsJ.length * mainRuleSet.qualitiesK.length;
+          // Use actual J×K combinations count  
+          expected[handle] = mainRuleSet.noCenterCombinations.length;
         }
       } else {
-        // |J| × |K| per base row
-        expected[handle] = groupSummary.count * mainRuleSet.metalsJ.length * mainRuleSet.qualitiesK.length;
+        // Actual J×K combinations per base row
+        expected[handle] = groupSummary.count * mainRuleSet.noCenterCombinations.length;
       }
     }
   }
