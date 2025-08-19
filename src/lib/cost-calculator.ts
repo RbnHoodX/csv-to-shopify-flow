@@ -1,9 +1,15 @@
-import { trimAll, toNum, toFixed2, ctStr, calculateSumSideCt } from './csv-parser';
-import type { VariantSeed } from './variant-expansion';
-import type { RuleSet, NoStonesRuleSet } from './rulebook-parser';
-import { calculatePricing, type PricingResult } from './pricing-calculator';
-import type { WeightLookupTable } from './weight-lookup';
-import { getVariantWeight } from './weight-lookup';
+import {
+  trimAll,
+  toNum,
+  toFixed2,
+  ctStr,
+  calculateSumSideCt,
+} from "./csv-parser";
+import type { VariantSeed } from "./variant-expansion";
+import type { RuleSet, NoStonesRuleSet } from "./rulebook-parser";
+import { calculatePricing, type PricingResult } from "./pricing-calculator";
+import type { WeightLookupTable } from "./weight-lookup";
+import { getVariantWeight } from "./weight-lookup";
 
 export interface CostBreakdown {
   diamondCost: number;
@@ -35,9 +41,9 @@ export interface CostBreakdown {
  * e.g., "14W" -> "14", "18R" -> "18", "PLT" -> "PLT"
  */
 function getMetalFamilyKey(metalCode: string): string {
-  if (metalCode.startsWith('14')) return '14';
-  if (metalCode.startsWith('18')) return '18';
-  if (metalCode.startsWith('PLT') || metalCode === 'PLT') return 'PLT';
+  if (metalCode.startsWith("14")) return "14";
+  if (metalCode.startsWith("18")) return "18";
+  if (metalCode.startsWith("PLT") || metalCode === "PLT") return "PLT";
   return metalCode;
 }
 
@@ -45,11 +51,11 @@ function getMetalFamilyKey(metalCode: string): string {
  * Generate SKU with running index starting at 2 within each handle
  */
 export function generateSKUWithRunningIndex(
-  coreNumber: string, 
-  handleVariants: VariantSeed[], 
+  coreNumber: string,
+  handleVariants: VariantSeed[],
   variantIndex: number
 ): string {
-  const base = coreNumber.replace(/[^A-Za-z0-9]/g, '');
+  const base = coreNumber.replace(/[^A-Za-z0-9]/g, "");
   const runningIndex = variantIndex + 2; // Start at -2, increment to -3, -4, etc.
   return `${base}-${runningIndex}`;
 }
@@ -64,40 +70,52 @@ function calculateVariantGrams(
 ): { grams: number; baseGrams: number; weightMultiplier: number } {
   // Get base grams from input row (F column - Grams Weight)
   const baseGrams = toNum(
-    variant.inputRowRef['Grams Weight'] ||
-    variant.inputRowRef['Grams Weight 14kt'] ||
-    variant.inputRowRef['GramsWeight14kt'] ||
-    variant.inputRowRef['Base Grams'] ||
-    variant.inputRowRef['BaseGrams'] ||
-    variant.inputRowRef['Weight'] ||
-    variant.inputRowRef['Grams'] ||
-    '5' // Default if missing
+    variant.inputRowRef["Grams Weight"] ||
+      variant.inputRowRef["Grams Weight 14kt"] ||
+      variant.inputRowRef["GramsWeight14kt"] ||
+      variant.inputRowRef["Base Grams"] ||
+      variant.inputRowRef["BaseGrams"] ||
+      variant.inputRowRef["Weight"] ||
+      variant.inputRowRef["Grams"] ||
+      "5" // Default if missing
   );
 
-  console.log(`💎 Calculating grams for ${variant.core} with ${variant.metalCode}:`);
+  console.log(
+    `💎 Calculating grams for ${variant.core} with ${variant.metalCode}:`
+  );
   console.log(`   📊 Base grams from input: ${baseGrams}g`);
-  console.log(`   📋 Available input columns:`, Object.keys(variant.inputRowRef));
+  console.log(
+    `   📋 Available input columns:`,
+    Object.keys(variant.inputRowRef)
+  );
 
-  if ('weightIndex' in ruleSet) {
+  if ("weightIndex" in ruleSet) {
     // For Natural/LabGrown rules - apply metal weight multiplier from Weight Index
     const metalFamilyKey = getMetalFamilyKey(variant.metalCode);
     const weightMultiplier = ruleSet.weightIndex.get(metalFamilyKey) || 1;
-    
+
     console.log(`   🔍 Metal family key: ${metalFamilyKey}`);
-    console.log(`   📊 Available weight index entries:`, Array.from(ruleSet.weightIndex.entries()));
+    console.log(
+      `   📊 Available weight index entries:`,
+      Array.from(ruleSet.weightIndex.entries())
+    );
     console.log(`   ⚖️ Weight multiplier: ${weightMultiplier}`);
-    
+
     if (!ruleSet.weightIndex.has(metalFamilyKey)) {
-      console.warn(`Weight multiplier not found for metal ${metalFamilyKey}, using default 1`);
+      console.warn(
+        `Weight multiplier not found for metal ${metalFamilyKey}, using default 1`
+      );
     }
-    
-    const finalGrams = baseGrams * weightMultiplier;
-    console.log(`   ✅ Final calculation: ${baseGrams}g × ${weightMultiplier} = ${finalGrams}g`);
-    
+
+    const finalGrams = Math.round((baseGrams * weightMultiplier) / 0.5) * 0.5; // Round to nearest 0.5g
+    console.log(
+      `   ✅ Final calculation: ${baseGrams}g × ${weightMultiplier} = ${finalGrams}g`
+    );
+
     return {
       grams: finalGrams,
       baseGrams,
-      weightMultiplier
+      weightMultiplier,
     };
   } else {
     // No Stones - use base weight (no multiplier)
@@ -105,7 +123,7 @@ function calculateVariantGrams(
     return {
       grams: baseGrams,
       baseGrams,
-      weightMultiplier: 1
+      weightMultiplier: 1,
     };
   }
 }
@@ -113,15 +131,19 @@ function calculateVariantGrams(
 /**
  * Calculate diamond cost based on scenario
  */
-function calculateDiamondCost(variant: VariantSeed): { cost: number; carats: number; pricePerCarat: number } {
-  if (variant.scenario === 'NoStones') {
+function calculateDiamondCost(variant: VariantSeed): {
+  cost: number;
+  carats: number;
+  pricePerCarat: number;
+} {
+  if (variant.scenario === "NoStones") {
     return { cost: 0, carats: 0, pricePerCarat: 0 };
   }
 
   let totalCarats = 0;
   let pricePerCarat = 150; // Default price per carat
 
-  if (variant.scenario === 'Unique+Center' && variant.centerSize) {
+  if (variant.scenario === "Unique+Center" && variant.centerSize) {
     // With center: centerSize + sumSideCt (sum all side columns)
     const centerCt = toNum(variant.centerSize);
     const sumSideCt = calculateSumSideCt(variant.inputRowRef);
@@ -129,20 +151,20 @@ function calculateDiamondCost(variant: VariantSeed): { cost: number; carats: num
   } else {
     // No center: use TotalCtWeight
     totalCarats = toNum(
-      variant.inputRowRef['Total Ct Weight'] ||
-      variant.inputRowRef['Total ct'] ||
-      variant.inputRowRef['TotalCt'] ||
-      variant.inputRowRef['Total Carat'] ||
-      '0'
+      variant.inputRowRef["Total Ct Weight"] ||
+        variant.inputRowRef["Total ct"] ||
+        variant.inputRowRef["TotalCt"] ||
+        variant.inputRowRef["Total Carat"] ||
+        "0"
     );
   }
 
   // Get price per carat from input or use default
   const inputPricePerCarat = toNum(
-    variant.inputRowRef['Price Per Carat'] ||
-    variant.inputRowRef['PricePerCarat'] ||
-    variant.inputRowRef['Diamond Price'] ||
-    ''
+    variant.inputRowRef["Price Per Carat"] ||
+      variant.inputRowRef["PricePerCarat"] ||
+      variant.inputRowRef["Diamond Price"] ||
+      ""
   );
   if (!isNaN(inputPricePerCarat) && inputPricePerCarat > 0) {
     pricePerCarat = inputPricePerCarat;
@@ -151,7 +173,7 @@ function calculateDiamondCost(variant: VariantSeed): { cost: number; carats: num
   return {
     cost: totalCarats * pricePerCarat,
     carats: totalCarats,
-    pricePerCarat
+    pricePerCarat,
   };
 }
 
@@ -163,24 +185,26 @@ function calculateMetalCost(
   variantGrams: number,
   ruleSet: RuleSet | NoStonesRuleSet
 ): { cost: number; pricePerGram: number } {
-  if ('metalPrice' in ruleSet) {
+  if ("metalPrice" in ruleSet) {
     const metalFamilyKey = getMetalFamilyKey(variant.metalCode);
     const pricePerGram = ruleSet.metalPrice.get(metalFamilyKey) || 2.5; // Default $2.50/gram
-    
+
     if (!ruleSet.metalPrice.has(metalFamilyKey)) {
-      console.warn(`Metal price not found for ${metalFamilyKey}, using default $2.50/gram`);
+      console.warn(
+        `Metal price not found for ${metalFamilyKey}, using default $2.50/gram`
+      );
     }
-    
+
     return {
       cost: variantGrams * pricePerGram,
-      pricePerGram
+      pricePerGram,
     };
   } else {
     // No Stones - use default metal pricing
     const defaultPricePerGram = 2.5;
     return {
       cost: variantGrams * defaultPricePerGram,
-      pricePerGram: defaultPricePerGram
+      pricePerGram: defaultPricePerGram,
     };
   }
 }
@@ -201,38 +225,39 @@ function calculateLaborCosts(
   hasCenter: boolean;
   isBracelet: boolean;
 } {
-  const laborMap = 'labor' in ruleSet ? ruleSet.labor : new Map<string, number>();
+  const laborMap =
+    "labor" in ruleSet ? ruleSet.labor : new Map<string, number>();
 
   // Side stone cost
   const sideStoneCount = toNum(
-    variant.inputRowRef['Side Stone Count'] ||
-    variant.inputRowRef['SideStoneCount'] ||
-    variant.inputRowRef['Side Stones'] ||
-    '0'
+    variant.inputRowRef["Side Stone Count"] ||
+      variant.inputRowRef["SideStoneCount"] ||
+      variant.inputRowRef["Side Stones"] ||
+      "0"
   );
-  const perSideStone = laborMap.get('Per side stone') || 0;
+  const perSideStone = laborMap.get("Per side stone") || 0;
   const sideStoneCost = sideStoneCount * perSideStone;
 
   // Center stone cost
-  const hasCenter = variant.scenario === 'Unique+Center';
-  const perCenter = laborMap.get('Per Center') || 0;
+  const hasCenter = variant.scenario === "Unique+Center";
+  const perCenter = laborMap.get("Per Center") || 0;
   const centerStoneCost = hasCenter ? perCenter : 0;
 
   // Polish cost
-  const polishCost = laborMap.get('Polish') || 25;
+  const polishCost = laborMap.get("Polish") || 25;
 
   // Bracelets cost
   const category = trimAll(
-    variant.inputRowRef['Category'] ||
-    variant.inputRowRef['Type'] ||
-    variant.inputRowRef['Subcategory'] ||
-    ''
+    variant.inputRowRef["Category"] ||
+      variant.inputRowRef["Type"] ||
+      variant.inputRowRef["Subcategory"] ||
+      ""
   ).toLowerCase();
-  const isBracelet = category.includes('bracelet');
-  const braceletsCost = isBracelet ? (laborMap.get('Bracelets') || 0) : 0;
+  const isBracelet = category.includes("bracelet");
+  const braceletsCost = isBracelet ? laborMap.get("Bracelets") || 0 : 0;
 
   // CAD Creation cost
-  const cadCreationCost = laborMap.get('CAD Creation') || 20;
+  const cadCreationCost = laborMap.get("CAD Creation") || 20;
 
   return {
     sideStoneCost,
@@ -242,7 +267,7 @@ function calculateLaborCosts(
     cadCreationCost,
     sideStoneCount,
     hasCenter,
-    isBracelet
+    isBracelet,
   };
 }
 
@@ -256,13 +281,13 @@ export function calculateCostBreakdown(
 ): CostBreakdown {
   // Calculate variant grams
   const gramsCalc = calculateVariantGrams(variant, ruleSet);
-  
+
   // Calculate diamond cost
   const diamondCalc = calculateDiamondCost(variant);
-  
+
   // Calculate metal cost
   const metalCalc = calculateMetalCost(variant, gramsCalc.grams, ruleSet);
-  
+
   // Calculate labor costs
   const laborCalc = calculateLaborCosts(variant, ruleSet);
 
@@ -270,7 +295,7 @@ export function calculateCostBreakdown(
   const constantCost = 25;
 
   // Total cost
-  const totalCost = 
+  const totalCost =
     diamondCalc.cost +
     metalCalc.cost +
     laborCalc.sideStoneCost +
@@ -304,7 +329,7 @@ export function calculateCostBreakdown(
       diamondPricePerCarat: diamondCalc.pricePerCarat,
       sideStoneCount: laborCalc.sideStoneCount,
       hasCenter: laborCalc.hasCenter,
-      isBracelet: laborCalc.isBracelet
-    }
+      isBracelet: laborCalc.isBracelet,
+    },
   };
 }

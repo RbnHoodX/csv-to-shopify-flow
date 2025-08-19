@@ -1,19 +1,19 @@
-import { trimAll, toNum } from './csv-parser';
+import { trimAll, toNum } from "./csv-parser";
 
 export interface RuleSet {
-  metalsG: string[];      // Metals (center-present)
-  centersH: string[];     // Center Sizes
-  qualitiesI: string[];   // Qualities (center-present)
-  metalsJ: string[];      // Metals (no-center)
-  qualitiesK: string[];   // Qualities (no-center)
-  weightIndex: Map<string, number>;  // Metal code → weight multiplier
-  metalPrice: Map<string, number>;   // Metal code → price per gram
-  labor: Map<string, number>;        // Labor type → cost
-  margins: Array<{begin: number, end?: number, m: number}>; // Margin ranges
+  metalsG: string[]; // Metals (center-present)
+  centersH: string[]; // Center Sizes
+  qualitiesI: string[]; // Qualities (center-present)
+  metalsJ: string[]; // Metals (no-center)
+  qualitiesK: string[]; // Qualities (no-center)
+  weightIndex: Map<string, number>; // Metal code → weight multiplier
+  metalPrice: Map<string, number>; // Metal code → price per gram
+  labor: Map<string, number>; // Labor type → cost
+  margins: Array<{ begin: number; end?: number; m: number }>; // Margin ranges
 }
 
 export interface NoStonesRuleSet {
-  metalsA: string[];      // Metals list for no-stones items
+  metalsA: string[]; // Metals list for no-stones items
 }
 
 /**
@@ -24,8 +24,8 @@ function splitMetalCodes(cellValue: string): string[] {
   if (!cellValue) return [];
   return trimAll(cellValue)
     .split(/[ ,|]+/)
-    .filter(code => code.length > 0)
-    .map(code => trimAll(code));
+    .filter((code) => code.length > 0)
+    .map((code) => trimAll(code));
 }
 
 /**
@@ -36,15 +36,15 @@ function splitCenterSizes(cellValue: string): string[] {
   if (!cellValue) return [];
   return trimAll(cellValue)
     .split(/[ ,|]+/)
-    .filter(size => size.length > 0)
-    .map(size => trimAll(size));
+    .filter((size) => size.length > 0)
+    .map((size) => trimAll(size));
 }
 
 /**
  * Find column index by header pattern (case-insensitive partial match)
  */
 function findColumnIndex(headers: string[], pattern: string): number {
-  return headers.findIndex(header => 
+  return headers.findIndex((header) =>
     header.toLowerCase().includes(pattern.toLowerCase())
   );
 }
@@ -54,18 +54,18 @@ function findColumnIndex(headers: string[], pattern: string): number {
  * Assumes two-column format: Key | Value
  */
 function extractLookupTable(
-  rows: Record<string, string>[], 
-  startRowIndex: number, 
-  keyColumn: string, 
+  rows: Record<string, string>[],
+  startRowIndex: number,
+  keyColumn: string,
   valueColumn: string
 ): Map<string, number> {
   const table = new Map<string, number>();
-  
+
   for (let i = startRowIndex; i < rows.length; i++) {
     const row = rows[i];
     const key = trimAll(row[keyColumn]);
     const value = toNum(row[valueColumn]);
-    
+
     if (key && !isNaN(value)) {
       table.set(key, value);
     } else if (!key && !row[valueColumn]) {
@@ -73,54 +73,62 @@ function extractLookupTable(
       break;
     }
   }
-  
+
   return table;
 }
 
 /**
  * Extract margin table with range format
  */
-function extractMarginTable(rows: Record<string, string>[], startRowIndex: number): Array<{begin: number, end?: number, m: number}> {
-  const margins: Array<{begin: number, end?: number, m: number}> = [];
-  
+function extractMarginTable(
+  rows: Record<string, string>[],
+  startRowIndex: number
+): Array<{ begin: number; end?: number; m: number }> {
+  const margins: Array<{ begin: number; end?: number; m: number }> = [];
+
   for (let i = startRowIndex; i < rows.length; i++) {
     const row = rows[i];
-    const beginStr = trimAll(row['Range Begin'] || row['Begin'] || '');
-    const endStr = trimAll(row['Range End'] || row['End'] || '');
-    const multiplierStr = trimAll(row['Multiplier'] || row['M'] || '');
-    
+    const beginStr = trimAll(row["Range Begin"] || row["Begin"] || "");
+    const endStr = trimAll(row["Range End"] || row["End"] || "");
+    const multiplierStr = trimAll(row["Multiplier"] || row["M"] || "");
+
     const begin = toNum(beginStr);
     const end = endStr ? toNum(endStr) : undefined;
     const m = toNum(multiplierStr);
-    
+
     if (!isNaN(begin) && !isNaN(m)) {
       margins.push({ begin, end: isNaN(end!) ? undefined : end, m });
     } else if (!beginStr && !endStr && !multiplierStr) {
       break;
     }
   }
-  
+
   return margins;
 }
 
 /**
  * Extract labor table with label and cost columns
  */
-function extractLaborTable(rows: Record<string, string>[], startRowIndex: number): Map<string, number> {
+function extractLaborTable(
+  rows: Record<string, string>[],
+  startRowIndex: number
+): Map<string, number> {
   const labor = new Map<string, number>();
-  
+
   for (let i = startRowIndex; i < rows.length; i++) {
     const row = rows[i];
-    const label = trimAll(row['Label'] || row['Labor'] || row['Description'] || '');
-    const cost = toNum(row['Cost'] || row['Price'] || '');
-    
+    const label = trimAll(
+      row["Label"] || row["Labor"] || row["Description"] || ""
+    );
+    const cost = toNum(row["Cost"] || row["Price"] || "");
+
     if (label && !isNaN(cost)) {
       labor.set(label, cost);
     } else if (!label && isNaN(cost)) {
       break;
     }
   }
-  
+
   return labor;
 }
 
@@ -138,12 +146,12 @@ export function extractRuleSets(ruleRows: Record<string, string>[]): RuleSet {
       weightIndex: new Map(),
       metalPrice: new Map(),
       labor: new Map(),
-      margins: []
+      margins: [],
     };
   }
 
   const headers = Object.keys(ruleRows[0]);
-  
+
   // Use exact column indices for G, H, I, J, K (0-based indexing)
   const colG = 6; // Column G (index 6) - "If Center and Diamonds Natural"
   const colH = 7; // Column H (index 7) - Center sizes
@@ -162,15 +170,21 @@ export function extractRuleSets(ruleRows: Record<string, string>[]): RuleSet {
   for (let i = 0; i < ruleRows.length; i++) {
     const row = ruleRows[i];
     const rowValues = Object.values(row);
-    
+
     // Stop processing if we hit lookup tables (look for clear table headers)
-    const firstCell = trimAll(rowValues[0] || '');
-    if (firstCell.toLowerCase().includes('metal') && 
-        (trimAll(rowValues[1] || '').toLowerCase().includes('weight') || 
-         trimAll(rowValues[1] || '').toLowerCase().includes('price'))) {
+    const firstCell = trimAll(rowValues[0] || "");
+    if (
+      firstCell.toLowerCase().includes("metal") &&
+      (trimAll(rowValues[1] || "")
+        .toLowerCase()
+        .includes("weight") ||
+        trimAll(rowValues[1] || "")
+          .toLowerCase()
+          .includes("price"))
+    ) {
       break; // We've hit the lookup tables section
     }
-    
+
     // Column G: Metals (center-present) - read entire block
     if (colG < rowValues.length) {
       const metalsCell = trimAll(rowValues[colG]);
@@ -179,8 +193,8 @@ export function extractRuleSets(ruleRows: Record<string, string>[]): RuleSet {
         metalsG.push(...metals);
       }
     }
-    
-    // Column H: Center Sizes - read entire block  
+
+    // Column H: Center Sizes - read entire block
     if (colH < rowValues.length) {
       const sizesCell = trimAll(rowValues[colH]);
       if (sizesCell) {
@@ -188,13 +202,13 @@ export function extractRuleSets(ruleRows: Record<string, string>[]): RuleSet {
         centersH.push(...sizes);
       }
     }
-    
+
     // Column I: Qualities (center-present) - read entire block
     if (colI < rowValues.length) {
       const quality = trimAll(rowValues[colI]);
       if (quality) qualitiesI.push(quality);
     }
-    
+
     // Column J: Metals (no-center) - read entire block
     if (colJ < rowValues.length) {
       const metalsCell = trimAll(rowValues[colJ]);
@@ -203,7 +217,7 @@ export function extractRuleSets(ruleRows: Record<string, string>[]): RuleSet {
         metalsJ.push(...metals);
       }
     }
-    
+
     // Column K: Qualities (no-center) - read entire block
     if (colK < rowValues.length) {
       const quality = trimAll(rowValues[colK]);
@@ -212,30 +226,38 @@ export function extractRuleSets(ruleRows: Record<string, string>[]): RuleSet {
   }
 
   // Preserve order from CSV but remove duplicates while maintaining first occurrence order
-  const uniqueMetalsG = [...new Set(metalsG)].filter(m => m.length > 0);
-  const uniqueCentersH = [...new Set(centersH)].filter(c => c.length > 0);
-  const uniqueQualitiesI = [...new Set(qualitiesI)].filter(q => q.length > 0);
-  const uniqueMetalsJ = [...new Set(metalsJ)].filter(m => m.length > 0);
-  const uniqueQualitiesK = [...new Set(qualitiesK)].filter(q => q.length > 0);
+  const uniqueMetalsG = [...new Set(metalsG)].filter((m) => m.length > 0);
+  const uniqueCentersH = [...new Set(centersH)].filter((c) => c.length > 0);
+  const uniqueQualitiesI = [...new Set(qualitiesI)].filter((q) => q.length > 0);
+  const uniqueMetalsJ = [...new Set(metalsJ)].filter((m) => m.length > 0);
+  const uniqueQualitiesK = [...new Set(qualitiesK)].filter((q) => q.length > 0);
 
   console.log(`🔍 All headers found:`, headers);
   console.log(`🔍 Total rows in file: ${ruleRows.length}`);
+  console.log(
+    `🔍 weight index col number: ${findColumnIndex(headers, "Weight Index")}`
+  );
 
   // Weight Index is already in headers, find where data starts
   let tableStartRow = 1; // Start from row 1 by default
-  
+
   // Look for first row with actual weight index data
   for (let i = 1; i < Math.min(ruleRows.length, 50); i++) {
     const row = ruleRows[i];
     const rowValues = Object.values(row);
-    
+
     // Check if this row has weight index data (metal codes like 14W, 18K, etc.)
-    const firstCol = trimAll(rowValues[11] || ''); // Weight Index column
-    const secondCol = trimAll(rowValues[12] || ''); // Next column
-    
-    if (firstCol && (firstCol.match(/^\d+[WYR]?$/) || firstCol.includes('PLT'))) {
+    const firstCol = trimAll(rowValues[11] || ""); // Weight Index column
+    const secondCol = trimAll(rowValues[12] || ""); // Next column
+
+    if (
+      firstCol &&
+      (firstCol.match(/^\d+[WYR]?$/) || firstCol.includes("PLT"))
+    ) {
       tableStartRow = i;
-      console.log(`📊 Found Weight Index data starting at row ${tableStartRow}`);
+      console.log(
+        `📊 Found Weight Index data starting at row ${tableStartRow}`
+      );
       console.log(`📊 First weight entry: ${firstCol} → ${secondCol}`);
       break;
     }
@@ -247,32 +269,45 @@ export function extractRuleSets(ruleRows: Record<string, string>[]): RuleSet {
   const weightIndex = new Map<string, number>();
   const metalPrice = new Map<string, number>();
   const labor = new Map<string, number>();
-  const margins: Array<{begin: number, end?: number, m: number}> = [];
+  const margins: Array<{ begin: number; end?: number; m: number }> = [];
 
   // Find Weight Index column by searching for "Weight Index" header
-  const weightIndexColIndex = findColumnIndex(headers, 'Weight Index');
-  console.log(`🔍 Searching for 'Weight Index' in headers, found at index: ${weightIndexColIndex}`);
-  
+  const weightIndexColIndex = findColumnIndex(headers, "Weight Index");
+  console.log(
+    `🔍 Searching for 'Weight Index' in headers, found at index: ${weightIndexColIndex}`
+  );
+
   let weightTable = new Map<string, number>();
-  
+
   if (weightIndexColIndex >= 0) {
-    console.log(`📊 Found Weight Index column at index ${weightIndexColIndex} (${headers[weightIndexColIndex]})`);
-    console.log(`📊 Will use next column at index ${weightIndexColIndex + 1} for multipliers`);
-    
+    console.log(
+      `📊 Found Weight Index column at index ${weightIndexColIndex} (${headers[weightIndexColIndex]})`
+    );
+    console.log(
+      `📊 Will use next column at index ${
+        weightIndexColIndex + 1
+      } for multipliers`
+    );
+
     // Extract weight index data: metal codes from Weight Index column, multipliers from next column
     for (let i = tableStartRow; i < ruleRows.length; i++) {
       const row = ruleRows[i];
       const rowValues = Object.values(row);
-      
-      console.log(`📊 Row ${i} values:`, rowValues.slice(weightIndexColIndex, weightIndexColIndex + 2));
-      
+
+      console.log(
+        `📊 Row ${i} values:`,
+        rowValues.slice(weightIndexColIndex, weightIndexColIndex + 2)
+      );
+
       // Get metal code from Weight Index column
-      const metalCode = trimAll(rowValues[weightIndexColIndex] || '');
+      const metalCode = trimAll(rowValues[weightIndexColIndex] || "");
       // Get multiplier from next column
-      const multiplier = toNum(rowValues[weightIndexColIndex + 1] || '');
-      
-      console.log(`📊 Processing: metal='${metalCode}', multiplier=${multiplier}`);
-      
+      const multiplier = toNum(rowValues[weightIndexColIndex + 1] || "");
+
+      console.log(
+        `📊 Processing: metal='${metalCode}', multiplier=${multiplier}`
+      );
+
       if (metalCode && !isNaN(multiplier)) {
         weightTable.set(metalCode, multiplier);
         console.log(`📊 Weight Index: ${metalCode} → ${multiplier}`);
@@ -282,30 +317,33 @@ export function extractRuleSets(ruleRows: Record<string, string>[]): RuleSet {
         break;
       }
     }
-    
+
     console.log(`📊 Extracted ${weightTable.size} weight index entries`);
   } else {
-    console.warn('Weight Index column not found');
-    console.log(`🔍 Available headers for debugging:`, headers.map((h, i) => `${i}: "${h}"`));
+    console.warn("Weight Index column not found");
+    console.log(
+      `🔍 Available headers for debugging:`,
+      headers.map((h, i) => `${i}: "${h}"`)
+    );
   }
-  
+
   // Metal Price table (look for next table)
   let priceTableStart = tableStartRow + 10;
   for (let i = tableStartRow + 5; i < ruleRows.length; i++) {
     const row = ruleRows[i];
-    const firstCell = trimAll(row[headers[0]] || '');
-    const secondCell = trimAll(row[headers[2] || headers[1]] || '');
+    const firstCell = trimAll(row[headers[0]] || "");
+    const secondCell = trimAll(row[headers[2] || headers[1]] || "");
     if (firstCell && secondCell && !isNaN(toNum(secondCell))) {
       priceTableStart = i;
       break;
     }
   }
-  
+
   const priceTable = extractLookupTable(
-    ruleRows, 
-    priceTableStart, 
-    headers[0] || 'Metal',
-    headers[2] || 'Price'
+    ruleRows,
+    priceTableStart,
+    headers[0] || "Metal",
+    headers[2] || "Price"
   );
 
   // Copy extracted tables
@@ -315,7 +353,7 @@ export function extractRuleSets(ruleRows: Record<string, string>[]): RuleSet {
   // Labor and margins tables (approximate positions)
   const laborTable = extractLaborTable(ruleRows, tableStartRow + 20);
   const marginTable = extractMarginTable(ruleRows, tableStartRow + 30);
-  
+
   laborTable.forEach((value, key) => labor.set(key, value));
   margins.push(...marginTable);
 
@@ -328,14 +366,16 @@ export function extractRuleSets(ruleRows: Record<string, string>[]): RuleSet {
     weightIndex,
     metalPrice,
     labor,
-    margins
+    margins,
   };
 }
 
 /**
  * Extract rule sets from No Stones Rules.csv
  */
-export function extractNoStonesRuleSets(ruleRows: Record<string, string>[]): NoStonesRuleSet {
+export function extractNoStonesRuleSets(
+  ruleRows: Record<string, string>[]
+): NoStonesRuleSet {
   if (!ruleRows || ruleRows.length === 0) {
     return { metalsA: [] };
   }
@@ -345,25 +385,28 @@ export function extractNoStonesRuleSets(ruleRows: Record<string, string>[]): NoS
 
   // Column A: Metals list (first column)
   for (const row of ruleRows) {
-    const metal = trimAll(row[headers[0]] || '');
+    const metal = trimAll(row[headers[0]] || "");
     if (metal) {
       metalsA.push(metal);
     }
   }
 
   return {
-    metalsA: [...new Set(metalsA)].filter(m => m.length > 0)
+    metalsA: [...new Set(metalsA)].filter((m) => m.length > 0),
   };
 }
 
 /**
  * Log extracted rule set statistics
  */
-export function logRuleSetStats(ruleSet: RuleSet | NoStonesRuleSet, type: 'Natural' | 'LabGrown' | 'NoStones'): void {
-  if ('metalsA' in ruleSet) {
+export function logRuleSetStats(
+  ruleSet: RuleSet | NoStonesRuleSet,
+  type: "Natural" | "LabGrown" | "NoStones"
+): void {
+  if ("metalsA" in ruleSet) {
     // No Stones rules
     console.log(`${type} Rules - Metals A: ${ruleSet.metalsA.length}`);
-    console.log('Metals A:', ruleSet.metalsA);
+    console.log("Metals A:", ruleSet.metalsA);
   } else {
     // Natural/LabGrown rules
     console.log(`${type} Rules extracted:`);
@@ -376,10 +419,13 @@ export function logRuleSetStats(ruleSet: RuleSet | NoStonesRuleSet, type: 'Natur
     console.log(`- Metal Price table: ${ruleSet.metalPrice.size} entries`);
     console.log(`- Labor table: ${ruleSet.labor.size} entries`);
     console.log(`- Margin ranges: ${ruleSet.margins.length} entries`);
-    
+
     // Log some sample data
-    console.log('Sample metals G:', ruleSet.metalsG.slice(0, 5));
-    console.log('Sample centers H:', ruleSet.centersH.slice(0, 5));
-    console.log('Weight Index entries:', Array.from(ruleSet.weightIndex.entries()).slice(0, 3));
+    console.log("Sample metals G:", ruleSet.metalsG.slice(0, 5));
+    console.log("Sample centers H:", ruleSet.centersH.slice(0, 5));
+    console.log(
+      "Weight Index entries:",
+      Array.from(ruleSet.weightIndex.entries()).slice(0, 3)
+    );
   }
 }
