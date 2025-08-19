@@ -144,92 +144,142 @@ export function extractRuleSets(ruleRows: Record<string, string>[]): RuleSet {
 
   const headers = Object.keys(ruleRows[0]);
   
-  // Find column indices based on header patterns
-  const colG = Math.max(6, findColumnIndex(headers, 'if center and diamonds')); // Column G (index 6)
-  const colH = Math.max(7, findColumnIndex(headers, 'center size')); // Column H (index 7)
-  const colI = Math.max(8, headers.findIndex(h => h.toLowerCase() === 'quality')); // Column I (index 8)
-  const colJ = Math.max(9, findColumnIndex(headers, 'if no center and yes stones')); // Column J (index 9)
-  const colK = Math.max(10, findColumnIndex(headers, 'quality')); // Column K (index 10) - second quality column
+  // Use exact column indices for G, H, I, J, K (0-based indexing)
+  const colG = 6; // Column G (index 6) - "If Center and Diamonds Natural"
+  const colH = 7; // Column H (index 7) - Center sizes
+  const colI = 8; // Column I (index 8) - Qualities for center case
+  const colJ = 9; // Column J (index 9) - "If No Center and Yes Stones"
+  const colK = 10; // Column K (index 10) - Qualities for no-center case
 
-  // Extract arrays from columns
+  // Extract arrays from columns - read ALL rows in the file to capture complete rule blocks
   const metalsG: string[] = [];
   const centersH: string[] = [];
   const qualitiesI: string[] = [];
   const metalsJ: string[] = [];
   const qualitiesK: string[] = [];
 
-  // Process main data rows (assume first 20-30 rows contain the main data)
-  const mainDataRows = Math.min(30, ruleRows.length);
-  
-  for (let i = 0; i < mainDataRows; i++) {
+  // Process ALL rows to capture complete rule blocks (not just first 30)
+  for (let i = 0; i < ruleRows.length; i++) {
     const row = ruleRows[i];
     const rowValues = Object.values(row);
     
-    // Column G: Metals (center-present)
+    // Stop processing if we hit lookup tables (look for clear table headers)
+    const firstCell = trimAll(rowValues[0] || '');
+    if (firstCell.toLowerCase().includes('metal') && 
+        (trimAll(rowValues[1] || '').toLowerCase().includes('weight') || 
+         trimAll(rowValues[1] || '').toLowerCase().includes('price'))) {
+      break; // We've hit the lookup tables section
+    }
+    
+    // Column G: Metals (center-present) - read entire block
     if (colG < rowValues.length) {
-      const metalsCell = rowValues[colG];
-      const metals = splitMetalCodes(metalsCell);
-      metalsG.push(...metals);
+      const metalsCell = trimAll(rowValues[colG]);
+      if (metalsCell) {
+        const metals = splitMetalCodes(metalsCell);
+        metalsG.push(...metals);
+      }
     }
     
-    // Column H: Center Sizes
+    // Column H: Center Sizes - read entire block  
     if (colH < rowValues.length) {
-      const sizesCell = rowValues[colH];
-      const sizes = splitCenterSizes(sizesCell);
-      centersH.push(...sizes);
+      const sizesCell = trimAll(rowValues[colH]);
+      if (sizesCell) {
+        const sizes = splitCenterSizes(sizesCell);
+        centersH.push(...sizes);
+      }
     }
     
-    // Column I: Qualities (center-present)
+    // Column I: Qualities (center-present) - read entire block
     if (colI < rowValues.length) {
       const quality = trimAll(rowValues[colI]);
       if (quality) qualitiesI.push(quality);
     }
     
-    // Column J: Metals (no-center)
+    // Column J: Metals (no-center) - read entire block
     if (colJ < rowValues.length) {
-      const metalsCell = rowValues[colJ];
-      const metals = splitMetalCodes(metalsCell);
-      metalsJ.push(...metals);
+      const metalsCell = trimAll(rowValues[colJ]);
+      if (metalsCell) {
+        const metals = splitMetalCodes(metalsCell);
+        metalsJ.push(...metals);
+      }
     }
     
-    // Column K: Qualities (no-center)
-    if (colK < rowValues.length && colK !== colI) {
+    // Column K: Qualities (no-center) - read entire block
+    if (colK < rowValues.length) {
       const quality = trimAll(rowValues[colK]);
       if (quality) qualitiesK.push(quality);
     }
   }
 
-  // Remove duplicates
+  // Preserve order from CSV but remove duplicates while maintaining first occurrence order
   const uniqueMetalsG = [...new Set(metalsG)].filter(m => m.length > 0);
   const uniqueCentersH = [...new Set(centersH)].filter(c => c.length > 0);
   const uniqueQualitiesI = [...new Set(qualitiesI)].filter(q => q.length > 0);
   const uniqueMetalsJ = [...new Set(metalsJ)].filter(m => m.length > 0);
   const uniqueQualitiesK = [...new Set(qualitiesK)].filter(q => q.length > 0);
 
-  // Extract lookup tables (assume they start after main data, around row 35+)
-  const tableStartRow = Math.min(35, ruleRows.length - 10);
-  
-  // Weight Index table (Metal code → multiplier)
-  const weightIndex = extractLookupTable(
-    ruleRows, 
-    tableStartRow, 
-    headers[0] || 'Metal', // First column for metal codes
-    headers[1] || 'Weight' // Second column for weights
-  );
+  // Find where lookup tables start by looking for the first row after rule blocks
+  let tableStartRow = 0;
+  for (let i = 0; i < ruleRows.length; i++) {
+    const row = ruleRows[i];
+    const rowValues = Object.values(row);
+    const firstCell = trimAll(rowValues[0] || '');
+    
+    // Look for typical lookup table headers
+    if (firstCell.toLowerCase().includes('metal') && 
+        (trimAll(rowValues[1] || '').toLowerCase().includes('weight') || 
+         trimAll(rowValues[1] || '').toLowerCase().includes('price'))) {
+      tableStartRow = i;
+      break;
+    }
+  }
 
-  // Metal Price table (Metal code → price per gram)
-  const metalPrice = extractLookupTable(
-    ruleRows, 
-    tableStartRow + 10, 
-    headers[0] || 'Metal',
-    headers[2] || 'Price'
-  );
+  // Extract lookup tables dynamically
+  const weightIndex = new Map<string, number>();
+  const metalPrice = new Map<string, number>();
+  const labor = new Map<string, number>();
+  const margins: Array<{begin: number, end?: number, m: number}> = [];
 
-  // Labor table
-  const labor = extractLaborTable(ruleRows, tableStartRow + 20);
+  // Try to extract lookup tables if we found a starting point
+  if (tableStartRow > 0) {
+    // Weight Index table
+    const weightTable = extractLookupTable(
+      ruleRows, 
+      tableStartRow, 
+      headers[0] || 'Metal', 
+      headers[1] || 'Weight'
+    );
+    
+    // Metal Price table (look for next table)
+    let priceTableStart = tableStartRow + 10;
+    for (let i = tableStartRow + 5; i < ruleRows.length; i++) {
+      const row = ruleRows[i];
+      const firstCell = trimAll(row[headers[0]] || '');
+      const secondCell = trimAll(row[headers[2] || headers[1]] || '');
+      if (firstCell && secondCell && !isNaN(toNum(secondCell))) {
+        priceTableStart = i;
+        break;
+      }
+    }
+    
+    const priceTable = extractLookupTable(
+      ruleRows, 
+      priceTableStart, 
+      headers[0] || 'Metal',
+      headers[2] || 'Price'
+    );
 
-  // Margin table
-  const margins = extractMarginTable(ruleRows, tableStartRow + 30);
+    // Copy extracted tables
+    weightTable.forEach((value, key) => weightIndex.set(key, value));
+    priceTable.forEach((value, key) => metalPrice.set(key, value));
+
+    // Labor and margins tables (approximate positions)
+    const laborTable = extractLaborTable(ruleRows, tableStartRow + 20);
+    const marginTable = extractMarginTable(ruleRows, tableStartRow + 30);
+    
+    laborTable.forEach((value, key) => labor.set(key, value));
+    margins.push(...marginTable);
+  }
 
   return {
     metalsG: uniqueMetalsG,

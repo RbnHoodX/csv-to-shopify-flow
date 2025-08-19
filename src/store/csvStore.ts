@@ -94,11 +94,13 @@ export const useCSVStore = create<CSVStore>((set, get) => ({
         ruleSet = extractRuleSets(parsed.rows);
         logRuleSetStats(ruleSet, 'Natural');
         addLog('info', `Natural Rules: G=${(ruleSet as RuleSet).metalsG.length}, H=${(ruleSet as RuleSet).centersH.length}, I=${(ruleSet as RuleSet).qualitiesI.length}, J=${(ruleSet as RuleSet).metalsJ.length}, K=${(ruleSet as RuleSet).qualitiesK.length}`);
+        addLog('info', `Expected Natural G×H×I combinations: ${(ruleSet as RuleSet).metalsG.length} × ${(ruleSet as RuleSet).centersH.length} × ${(ruleSet as RuleSet).qualitiesI.length} = ${(ruleSet as RuleSet).metalsG.length * (ruleSet as RuleSet).centersH.length * (ruleSet as RuleSet).qualitiesI.length}`);
         addLog('info', `Lookup tables: Weight=${(ruleSet as RuleSet).weightIndex.size}, Price=${(ruleSet as RuleSet).metalPrice.size}, Labor=${(ruleSet as RuleSet).labor.size}, Margins=${(ruleSet as RuleSet).margins.length}`);
       } else if (fileType === 'labGrownRules') {
         ruleSet = extractRuleSets(parsed.rows);
         logRuleSetStats(ruleSet, 'LabGrown');
         addLog('info', `LabGrown Rules: G=${(ruleSet as RuleSet).metalsG.length}, H=${(ruleSet as RuleSet).centersH.length}, I=${(ruleSet as RuleSet).qualitiesI.length}, J=${(ruleSet as RuleSet).metalsJ.length}, K=${(ruleSet as RuleSet).qualitiesK.length}`);
+        addLog('info', `Expected LabGrown G×H×I combinations: ${(ruleSet as RuleSet).metalsG.length} × ${(ruleSet as RuleSet).centersH.length} × ${(ruleSet as RuleSet).qualitiesI.length} = ${(ruleSet as RuleSet).metalsG.length * (ruleSet as RuleSet).centersH.length * (ruleSet as RuleSet).qualitiesI.length}`);
         addLog('info', `Lookup tables: Weight=${(ruleSet as RuleSet).weightIndex.size}, Price=${(ruleSet as RuleSet).metalPrice.size}, Labor=${(ruleSet as RuleSet).labor.size}, Margins=${(ruleSet as RuleSet).margins.length}`);
       } else if (fileType === 'noStonesRules') {
         ruleSet = extractNoStonesRuleSets(parsed.rows);
