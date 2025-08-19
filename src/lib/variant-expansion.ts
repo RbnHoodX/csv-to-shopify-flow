@@ -71,6 +71,18 @@ function expandUniqueCenterVariants(
 ): VariantSeed[] {
   const variants: VariantSeed[] = [];
   const handle = createHandle(inputRow);
+  
+  // Debug for Bridal Sets
+  const isBridal = handle.toLowerCase().includes('bridal') || 
+                   inputRow.coreNumber.toLowerCase().includes('bridal');
+  
+  if (isBridal) {
+    console.log(`🔍 BRIDAL EXPANSION DEBUG - ${handle}:`);
+    console.log(`  - Metals G: ${ruleSet.metalsG.length} (${ruleSet.metalsG.slice(0, 3).join(', ')}, ...)`);
+    console.log(`  - Centers H: ${ruleSet.centersH.length} (${ruleSet.centersH.slice(0, 3).join(', ')}, ...)`);
+    console.log(`  - Qualities I: ${ruleSet.qualitiesI.length} (${ruleSet.qualitiesI.join(', ')})`);
+    console.log(`  - Expected total: ${ruleSet.metalsG.length} × ${ruleSet.centersH.length} × ${ruleSet.qualitiesI.length} = ${ruleSet.metalsG.length * ruleSet.centersH.length * ruleSet.qualitiesI.length}`);
+  }
 
   // Cartesian product G × H × I in rulebook order (preserve array order from CSV)
   for (const metalCode of ruleSet.metalsG) {
@@ -87,6 +99,10 @@ function expandUniqueCenterVariants(
         });
       }
     }
+  }
+  
+  if (isBridal) {
+    console.log(`  ✅ Generated ${variants.length} variants for ${handle}`);
   }
 
   return variants;
@@ -156,6 +172,21 @@ function expandGroupVariants(
   noStonesRules?: NoStonesRuleSet
 ): VariantSeed[] {
   const variants: VariantSeed[] = [];
+
+  // Special debugging for Bridal Sets
+  const isBridalSet = groupSummary.coreNumber.toLowerCase().includes('bridal') || 
+                      groupSummary.rows[0]?.['Subcategory']?.toLowerCase().includes('bridal') ||
+                      groupSummary.rows[0]?.['Category']?.toLowerCase().includes('bridal');
+  
+  if (isBridalSet) {
+    console.log(`🔍 BRIDAL SET DEBUG - ${groupSummary.coreNumber}:`);
+    console.log(`  - Total input rows: ${groupSummary.count}`);
+    console.log(`  - Is unique: ${groupSummary.isUnique}`);
+    console.log(`  - Rulebook: ${groupSummary.rulebook}`);
+    console.log(`  - First row diamonds type: ${groupSummary.rows[0]?.diamondsType}`);
+    console.log(`  - First row category: ${groupSummary.rows[0]?.['Category']}`);
+    console.log(`  - First row subcategory: ${groupSummary.rows[0]?.['Subcategory']}`);
+  }
 
   console.log(`🔧 Expanding variants for ${groupSummary.coreNumber}: ${groupSummary.count} rows, ${groupSummary.isUnique ? 'unique' : 'repeating'}`);
 
