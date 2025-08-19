@@ -74,19 +74,25 @@ function calculateVariantGrams(
     '5' // Default if missing
   );
 
-  console.log(`💎 Calculating grams for ${variant.core} with ${variant.metalCode}: base=${baseGrams}g`);
+  console.log(`💎 Calculating grams for ${variant.core} with ${variant.metalCode}:`);
+  console.log(`   📊 Base grams from input: ${baseGrams}g`);
+  console.log(`   📋 Available input columns:`, Object.keys(variant.inputRowRef));
 
   if ('weightIndex' in ruleSet) {
     // For Natural/LabGrown rules - apply metal weight multiplier from Weight Index
     const metalFamilyKey = getMetalFamilyKey(variant.metalCode);
     const weightMultiplier = ruleSet.weightIndex.get(metalFamilyKey) || 1;
     
+    console.log(`   🔍 Metal family key: ${metalFamilyKey}`);
+    console.log(`   📊 Available weight index entries:`, Array.from(ruleSet.weightIndex.entries()));
+    console.log(`   ⚖️ Weight multiplier: ${weightMultiplier}`);
+    
     if (!ruleSet.weightIndex.has(metalFamilyKey)) {
       console.warn(`Weight multiplier not found for metal ${metalFamilyKey}, using default 1`);
     }
     
     const finalGrams = baseGrams * weightMultiplier;
-    console.log(`✅ Weight calculation: ${baseGrams}g × ${weightMultiplier} = ${finalGrams}g`);
+    console.log(`   ✅ Final calculation: ${baseGrams}g × ${weightMultiplier} = ${finalGrams}g`);
     
     return {
       grams: finalGrams,
@@ -95,7 +101,7 @@ function calculateVariantGrams(
     };
   } else {
     // No Stones - use base weight (no multiplier)
-    console.log(`✅ No stones weight: ${baseGrams}g (no multiplier)`);
+    console.log(`   ✅ No stones weight: ${baseGrams}g (no multiplier)`);
     return {
       grams: baseGrams,
       baseGrams,
