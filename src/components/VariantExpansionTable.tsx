@@ -149,7 +149,7 @@ export const VariantExpansionTable: React.FC<VariantExpansionTableProps> = ({
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {variants.slice(0, 10).map((variant, idx) => (
+                          {variants.map((variant, idx) => (
                             <TableRow key={idx}>
                               <TableCell className="font-mono text-xs">
                                 {variant.metalCode}
@@ -165,13 +165,6 @@ export const VariantExpansionTable: React.FC<VariantExpansionTableProps> = ({
                               </TableCell>
                             </TableRow>
                           ))}
-                          {variants.length > 10 && (
-                            <TableRow>
-                              <TableCell colSpan={4} className="text-center text-sm text-muted-foreground py-3">
-                                ... and {variants.length - 10} more variants
-                              </TableCell>
-                            </TableRow>
-                          )}
                         </TableBody>
                       </Table>
                     </div>
