@@ -149,7 +149,7 @@ function calculateTotalCarat(variant: VariantSeed): string {
 }
 
 /**
- * Collect unique shapes from variants
+ * Collect unique shapes from variants and format for title
  */
 function collectShapes(variants: VariantSeed[]): string[] {
   const shapes = new Set<string>();
@@ -157,18 +157,43 @@ function collectShapes(variants: VariantSeed[]): string[] {
   for (const variant of variants) {
     // Add center shape if present
     if (variant.inputRowRef['Center shape']) {
-      shapes.add(trimAll(variant.inputRowRef['Center shape']));
+      const centerShape = trimAll(variant.inputRowRef['Center shape']);
+      if (centerShape) {
+        // Convert to title case
+        shapes.add(centerShape.charAt(0).toUpperCase() + centerShape.slice(1).toLowerCase());
+      }
     }
     
     // Add side shapes (may be comma-separated)
     const sideShapes = variant.inputRowRef['Side shapes'] || variant.inputRowRef['Side shape'] || '';
     if (sideShapes) {
       const shapeList = sideShapes.split(',').map((s: string) => trimAll(s)).filter((s: string) => s);
-      shapeList.forEach((shape: string) => shapes.add(shape));
+      shapeList.forEach((shape: string) => {
+        if (shape) {
+          // Convert to title case
+          shapes.add(shape.charAt(0).toUpperCase() + shape.slice(1).toLowerCase());
+        }
+      });
     }
   }
   
   return Array.from(shapes).sort();
+}
+
+/**
+ * Generate TCW bucket tags from min and max total carat weights
+ */
+function generateTCWBucketTags(minTCW: number, maxTCW: number): string[] {
+  const tags: string[] = [];
+  const startBucket = Math.floor(minTCW);
+  const endBucket = Math.ceil(maxTCW);
+  
+  for (let bucket = startBucket; bucket < endBucket; bucket++) {
+    const nextBucket = bucket + 1;
+    tags.push(`tcw_${bucket.toFixed(2)} CT - ${nextBucket.toFixed(2)} CT`);
+  }
+  
+  return tags;
 }
 
 /**
@@ -218,9 +243,9 @@ function createProductInfo(variants: VariantSeed[]) {
   const minTCW = Math.min(...caratWeights);
   const maxTCW = Math.max(...caratWeights);
   
-  // Collect unique shapes
+  // Collect unique shapes and format for title
   const shapes = collectShapes(variants);
-  const shapesStr = shapes.length > 0 ? shapes.join('/') : 'Mixed';
+  const shapesStr = shapes.length > 0 ? shapes.join(' & ') + ' Cut' : 'Mixed Cut';
   
   // Get category and subcategory
   const category = trimAll(inputRow['Category'] || 'Jewelry');
@@ -230,8 +255,8 @@ function createProductInfo(variants: VariantSeed[]) {
   const title = firstVariant.scenario === 'NoStones' 
     ? `${subcategory} - Premium ${category}`
     : minTCW === maxTCW 
-      ? `${minTCW.toFixed(2)} CT ${shapesStr} Cut - ${subcategory}`
-      : `${minTCW.toFixed(2)}-${maxTCW.toFixed(2)} CT ${shapesStr} Cut - ${subcategory}`;
+      ? `${minTCW.toFixed(2)} CT ${shapesStr} - ${subcategory}`
+      : `${minTCW.toFixed(2)}-${maxTCW.toFixed(2)} CT ${shapesStr} - ${subcategory}`;
   
   // Vendor is always "Primestyle.com"
   const vendor = 'Primestyle.com';
@@ -239,13 +264,32 @@ function createProductInfo(variants: VariantSeed[]) {
   // Type format: "{Category}_{Subcategory}"
   const type = `${category}_${subcategory}`;
   
-  // Build tags: Category, Subcategory, input Tags, and "tcw_{Min} CT - {Max} CT"
-  const inputTags = trimAll(inputRow['Tags'] || inputRow['Keywords'] || '');
-  const tcwTag = firstVariant.scenario === 'NoStones' 
-    ? '' 
-    : `tcw_${minTCW.toFixed(2)} CT - ${maxTCW.toFixed(2)} CT`;
+  // Build comprehensive tags
+  const tagParts: string[] = [];
   
-  const tagParts = [category, subcategory, inputTags, tcwTag].filter(Boolean);
+  // Add category
+  tagParts.push(category);
+  
+  // Add category_subcategory as single tag
+  tagParts.push(`${category}_${subcategory}`);
+  
+  // Add shape tags
+  shapes.forEach(shape => {
+    tagParts.push(`shape_${shape.toLowerCase()}`);
+  });
+  
+  // Add TCW bucket tags (only for stones scenarios)
+  if (firstVariant.scenario !== 'NoStones') {
+    const tcwBucketTags = generateTCWBucketTags(minTCW, maxTCW);
+    tagParts.push(...tcwBucketTags);
+  }
+  
+  // Add input tags if present
+  const inputTags = trimAll(inputRow['Tags'] || inputRow['Keywords'] || '');
+  if (inputTags) {
+    tagParts.push(inputTags);
+  }
+  
   const tags = tagParts.join(', ');
   
   // Generate body HTML
@@ -378,7 +422,7 @@ export function generateShopifyRowsWithCosts(
         'Variant Grams': toFixed2(costBreakdown.variantGrams),
         'Variant Inventory Tracker': '', // Fixed: blank (not "shopify")
         'Variant Inventory Qty': '1', // Fixed: 1 (not 10)
-        'Variant Inventory Policy': 'continue', // Fixed: "continue" (not "deny")
+        'Variant Inventory Policy': 'Continue', // Fixed: "Continue" with capital C
         'Variant Fulfillment Service': 'Manual', // Fixed: "Manual" with capital M
         'Variant Price': toFixed2(costBreakdown.pricing.variantPrice),
         'Variant Compare At Price': toFixed2(costBreakdown.pricing.compareAtPrice),
