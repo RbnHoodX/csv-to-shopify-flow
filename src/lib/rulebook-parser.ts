@@ -257,25 +257,31 @@ export function extractRuleSets(ruleRows: Record<string, string>[]): RuleSet {
     const weightIndexColIndex = findColumnIndex(headers, 'Weight Index');
     let weightTable = new Map<string, number>();
     
-    if (weightIndexColIndex >= 0 && weightIndexColIndex + 1 < headers.length) {
+    if (weightIndexColIndex >= 0) {
       console.log(`📊 Found Weight Index column at index ${weightIndexColIndex} (${headers[weightIndexColIndex]})`);
-      console.log(`📊 Using value column at index ${weightIndexColIndex + 1} (${headers[weightIndexColIndex + 1]})`);
       
-      weightTable = extractLookupTable(
-        ruleRows, 
-        tableStartRow, 
-        headers[weightIndexColIndex], 
-        headers[weightIndexColIndex + 1]
-      );
+      // Extract weight index data: metal codes from Weight Index column, multipliers from next column
+      for (let i = tableStartRow; i < ruleRows.length; i++) {
+        const row = ruleRows[i];
+        const rowValues = Object.values(row);
+        
+        // Get metal code from Weight Index column
+        const metalCode = trimAll(rowValues[weightIndexColIndex] || '');
+        // Get multiplier from next column
+        const multiplier = toNum(rowValues[weightIndexColIndex + 1] || '');
+        
+        if (metalCode && !isNaN(multiplier)) {
+          weightTable.set(metalCode, multiplier);
+          console.log(`📊 Weight Index: ${metalCode} → ${multiplier}`);
+        } else if (!metalCode && isNaN(multiplier)) {
+          // Empty row, might indicate end of table
+          break;
+        }
+      }
+      
+      console.log(`📊 Extracted ${weightTable.size} weight index entries`);
     } else {
-      console.warn('Weight Index column not found, trying fallback approach');
-      // Fallback: try to find it by scanning for actual weight data
-      weightTable = extractLookupTable(
-        ruleRows, 
-        tableStartRow, 
-        headers[0] || 'Metal', 
-        headers[1] || 'Weight'
-      );
+      console.warn('Weight Index column not found');
     }
     
     // Metal Price table (look for next table)
