@@ -56,13 +56,14 @@ export function generateSKUWithRunningIndex(
 
 /**
  * Calculate variant grams using weight lookup table by core number and metal
+ * This calculates per row per product variant using lookup table
  */
 function calculateVariantGrams(
   variant: VariantSeed,
   ruleSet: RuleSet | NoStonesRuleSet,
   weightTable?: WeightLookupTable
 ): { grams: number; baseGrams: number; weightMultiplier: number } {
-  // Get base grams from input (14KT baseline weight) as fallback
+  // Get base grams from input row (14KT baseline weight)
   const baseGrams = toNum(
     variant.inputRowRef['Grams Weight'] ||
     variant.inputRowRef['Grams Weight 14kt'] ||
@@ -74,27 +75,33 @@ function calculateVariantGrams(
     '5' // Default if missing
   );
 
-  // If we have a weight lookup table, use it for precise weights
+  console.log(`💎 Calculating grams for ${variant.core} with ${variant.metalCode}: base=${baseGrams}g`);
+
+  // If we have a weight lookup table, use it for precise per-product weights
   if (weightTable) {
     const { weight, isLookup } = getVariantWeight(
       weightTable,
-      variant.core,
+      variant.core, // Use core property
       variant.metalCode,
       baseGrams
     );
 
-    if (isLookup) {
-      // Using precise lookup weight
-      const weightMultiplier = baseGrams > 0 ? weight / baseGrams : 1;
-      return {
-        grams: weight,
-        baseGrams,
-        weightMultiplier
-      };
-    }
+    const weightMultiplier = baseGrams > 0 ? weight / baseGrams : 1;
+    const symbol = isLookup ? '✅' : '⚠️';
+    const source = isLookup ? 'lookup' : 'fallback';
+    
+    console.log(`${symbol} Weight ${source}: ${variant.core} + ${variant.metalCode} = ${weight}g (${weightMultiplier.toFixed(2)}x)`);
+    
+    return {
+      grams: weight,
+      baseGrams,
+      weightMultiplier
+    };
   }
 
-  // Fallback to original multiplier approach
+  // Fallback to multiplier approach only when no weight table is available
+  console.warn('⚠️ No weight lookup table available, using metal multipliers');
+  
   if ('weightIndex' in ruleSet) {
     // For Natural/LabGrown rules - apply metal weight multiplier
     const metalFamilyKey = getMetalFamilyKey(variant.metalCode);
