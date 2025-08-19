@@ -4,6 +4,7 @@ import { extractRuleSets, extractNoStonesRuleSets, logRuleSetStats, type RuleSet
 import { processInputData, type GroupSummary } from '@/lib/input-processor';
 import { expandAllVariants, calculateExpectedCounts, type ExpansionResult } from '@/lib/variant-expansion';
 import type { WeightLookupTable } from '@/lib/weight-lookup';
+import { getDefaultWeightLookup } from '@/lib/weight-lookup';
 
 export type CSVFile = {
   name: string;
@@ -77,6 +78,7 @@ export const useCSVStore = create<CSVStore>((set, get) => ({
     labGrownRules: createEmptyFile('LabGrown Rules.csv'),
     noStonesRules: createEmptyFile('No Stones Rules.csv'),
   },
+  weightTable: getDefaultWeightLookup(),
   logs: [],
   generatedCSV: '',
 

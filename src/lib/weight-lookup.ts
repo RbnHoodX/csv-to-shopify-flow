@@ -127,20 +127,31 @@ function normalizeMetal(metalCode: string): string {
 }
 
 /**
- * Default weight lookup data (can be used as fallback)
- * This would typically be loaded from an external CSV file
+ * Default weight lookup data (sample data for testing)
+ * This provides fallback weights when no CSV is uploaded
  */
 export function getDefaultWeightLookup(): WeightLookupTable {
   const defaultTable: WeightLookupTable = new Map();
   
-  // Example data structure - in production this would come from CSV
-  const sampleData = [
-    ['15686LB', 6.5, 8.0, 11.5], // [coreNumber, 14KT, 18KT, PLT]
-    // Add more entries as needed
-  ];
-
-  // This is just example structure - real implementation would load from CSV
-  console.log('Using default weight lookup (limited data)');
+  // Sample weight data for testing - 15686LB example
+  const sampleWeights = new Map<string, number>();
+  sampleWeights.set('14KT', 6.5);
+  sampleWeights.set('18KT', 8.0);
+  sampleWeights.set('PLT', 11.5);
+  sampleWeights.set('PLATINUM', 11.5);
+  
+  defaultTable.set('15686LB', sampleWeights);
+  
+  // Add more sample cores with different weights
+  const sampleWeights2 = new Map<string, number>();
+  sampleWeights2.set('14KT', 4.2);
+  sampleWeights2.set('18KT', 5.1);
+  sampleWeights2.set('PLT', 7.8);
+  sampleWeights2.set('PLATINUM', 7.8);
+  
+  defaultTable.set('12345AB', sampleWeights2);
+  
+  console.log(`📊 Default weight lookup loaded with ${defaultTable.size} sample core numbers`);
   
   return defaultTable;
 }
