@@ -321,15 +321,9 @@ export function generateShopifyRowsWithCosts(
   const allRows: ShopifyRowWithCosts[] = [];
 
   for (const [handle, handleVariants] of Object.entries(variantsByHandle)) {
-    // Sort variants for consistent ordering
-    const sortedVariants = handleVariants.sort((a, b) => {
-      if (a.metalCode !== b.metalCode) return a.metalCode.localeCompare(b.metalCode);
-      if (a.centerSize && b.centerSize && a.centerSize !== b.centerSize) {
-        return toNum(a.centerSize) - toNum(b.centerSize);
-      }
-      if (a.qualityCode && b.qualityCode) return a.qualityCode.localeCompare(b.qualityCode);
-      return 0;
-    });
+    // Keep variants in rulebook order - DO NOT SORT here
+    // The expansion already provides them in the correct rule order
+    const sortedVariants = handleVariants;
 
     const firstVariant = sortedVariants[0];
     const productInfo = createProductInfo(sortedVariants);
@@ -454,13 +448,8 @@ export function generateShopifyRowsWithCosts(
     });
   }
 
-  // Sort final rows deterministically by Handle, then by SKU suffix
-  allRows.sort((a, b) => {
-    if (a.Handle !== b.Handle) {
-      return a.Handle.localeCompare(b.Handle);
-    }
-    return extractSKUSuffix(a['Variant SKU']) - extractSKUSuffix(b['Variant SKU']);
-  });
+  // Preserve input row order - DO NOT SORT final rows
+  // Rows are already in the correct order: input order → variant order within each handle
 
   return allRows;
 }

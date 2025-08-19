@@ -72,7 +72,7 @@ function expandUniqueCenterVariants(
   const variants: VariantSeed[] = [];
   const handle = createHandle(inputRow);
 
-  // Cartesian product G × H × I
+  // Cartesian product G × H × I in rulebook order (preserve array order from CSV)
   for (const metalCode of ruleSet.metalsG) {
     for (const centerSize of ruleSet.centersH) {
       for (const qualityCode of ruleSet.qualitiesI) {
@@ -104,7 +104,7 @@ function expandNoCenterVariants(
   const variants: VariantSeed[] = [];
   const handle = createHandle(inputRow);
 
-  // Cartesian product J × K
+  // Cartesian product J × K in rulebook order (preserve array order from CSV)
   for (const metalCode of ruleSet.metalsJ) {
     for (const qualityCode of ruleSet.qualitiesK) {
       variants.push({
@@ -132,7 +132,7 @@ function expandNoStonesVariants(
   const variants: VariantSeed[] = [];
   const handle = createHandle(inputRow);
 
-  // One variant per metal in A
+  // One variant per metal in A (preserve array order from CSV)
   for (const metalCode of ruleSet.metalsA) {
     variants.push({
       handle,

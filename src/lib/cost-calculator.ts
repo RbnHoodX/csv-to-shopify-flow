@@ -48,7 +48,7 @@ export function generateSKUWithRunningIndex(
   variantIndex: number
 ): string {
   const base = coreNumber.replace(/[^A-Za-z0-9]/g, '');
-  const runningIndex = variantIndex + 2; // Start at 2
+  const runningIndex = variantIndex + 2; // Start at -2, increment to -3, -4, etc.
   return `${base}-${runningIndex}`;
 }
 

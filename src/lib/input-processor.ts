@@ -17,10 +17,12 @@ export interface GroupSummary {
 }
 
 /**
- * Group input rows by Core Number
+ * Group input rows by Core Number, preserving original input order
  */
-export function groupByCore(inputRows: Record<string, string>[]): Map<string, InputRow[]> {
+export function groupByCore(inputRows: Record<string, string>[]): { groups: Map<string, InputRow[]>; coreOrder: string[] } {
   const groups = new Map<string, InputRow[]>();
+  const coreOrder: string[] = [];
+  const seenCores = new Set<string>();
 
   for (const row of inputRows) {
     // Find Core Number column (try various common names)
@@ -52,11 +54,16 @@ export function groupByCore(inputRows: Record<string, string>[]): Map<string, In
 
     if (!groups.has(coreNumber)) {
       groups.set(coreNumber, []);
+      // Track order of first appearance
+      if (!seenCores.has(coreNumber)) {
+        coreOrder.push(coreNumber);
+        seenCores.add(coreNumber);
+      }
     }
     groups.get(coreNumber)!.push(inputRow);
   }
 
-  return groups;
+  return { groups, coreOrder };
 }
 
 /**
@@ -90,18 +97,20 @@ export function pickRulebook(
 }
 
 /**
- * Create summary from grouped input rows
+ * Create summary from grouped input rows preserving original input order
  */
 export function createGroupSummary(
   groups: Map<string, InputRow[]>,
+  coreOrder: string[],
   naturalRules?: RuleSet,
   labGrownRules?: RuleSet,
   noStonesRules?: NoStonesRuleSet
 ): GroupSummary[] {
   const summary: GroupSummary[] = [];
 
-  for (const [coreNumber, rows] of groups) {
-    // Use the first row's diamonds type for the group
+  // Create summaries in the order cores first appeared in input
+  for (const coreNumber of coreOrder) {
+    const rows = groups.get(coreNumber)!;
     const diamondsType = rows[0]?.diamondsType || '';
     
     summary.push({
@@ -114,8 +123,8 @@ export function createGroupSummary(
     });
   }
 
-  // Sort by core number for consistent display
-  return summary.sort((a, b) => a.coreNumber.localeCompare(b.coreNumber));
+  // Preserve original input order - DO NOT SORT
+  return summary;
 }
 
 /**
@@ -127,8 +136,8 @@ export function processInputData(
   labGrownRules?: RuleSet,
   noStonesRules?: NoStonesRuleSet
 ) {
-  const groups = groupByCore(inputRows);
-  const summary = createGroupSummary(groups, naturalRules, labGrownRules, noStonesRules);
+  const { groups, coreOrder } = groupByCore(inputRows);
+  const summary = createGroupSummary(groups, coreOrder, naturalRules, labGrownRules, noStonesRules);
   
   const stats = {
     totalRows: inputRows.length,
