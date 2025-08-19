@@ -60,10 +60,9 @@ export function generateSKUWithRunningIndex(
  */
 function calculateVariantGrams(
   variant: VariantSeed,
-  ruleSet: RuleSet | NoStonesRuleSet,
-  weightTable?: WeightLookupTable
+  ruleSet: RuleSet | NoStonesRuleSet
 ): { grams: number; baseGrams: number; weightMultiplier: number } {
-  // Get base grams from input row (14KT baseline weight)
+  // Get base grams from input row (F column - Grams Weight)
   const baseGrams = toNum(
     variant.inputRowRef['Grams Weight'] ||
     variant.inputRowRef['Grams Weight 14kt'] ||
@@ -77,46 +76,8 @@ function calculateVariantGrams(
 
   console.log(`💎 Calculating grams for ${variant.core} with ${variant.metalCode}: base=${baseGrams}g`);
 
-  // Debug weight table status
-  if (weightTable) {
-    console.log(`📊 Weight table available: ${weightTable.size} core numbers loaded`);
-    const coreWeights = weightTable.get(variant.core);
-    if (coreWeights) {
-      console.log(`✅ Found weights for ${variant.core}:`, Array.from(coreWeights.entries()));
-    } else {
-      console.warn(`❌ No weights found for core ${variant.core} in lookup table`);
-    }
-  } else {
-    console.warn(`❌ No weight lookup table provided - upload weight CSV first`);
-  }
-
-  // If we have a weight lookup table, use it for precise per-product weights
-  if (weightTable) {
-    const { weight, isLookup } = getVariantWeight(
-      weightTable,
-      variant.core, // Use core property
-      variant.metalCode,
-      baseGrams
-    );
-
-    const weightMultiplier = baseGrams > 0 ? weight / baseGrams : 1;
-    const symbol = isLookup ? '✅' : '⚠️';
-    const source = isLookup ? 'lookup' : 'fallback';
-    
-    console.log(`${symbol} Weight ${source}: ${variant.core} + ${variant.metalCode} = ${weight}g (${weightMultiplier.toFixed(2)}x)`);
-    
-    return {
-      grams: weight,
-      baseGrams,
-      weightMultiplier
-    };
-  }
-
-  // Fallback to multiplier approach only when no weight table is available
-  console.warn('⚠️ No weight lookup table available, using metal multipliers');
-  
   if ('weightIndex' in ruleSet) {
-    // For Natural/LabGrown rules - apply metal weight multiplier
+    // For Natural/LabGrown rules - apply metal weight multiplier from Weight Index
     const metalFamilyKey = getMetalFamilyKey(variant.metalCode);
     const weightMultiplier = ruleSet.weightIndex.get(metalFamilyKey) || 1;
     
@@ -124,13 +85,17 @@ function calculateVariantGrams(
       console.warn(`Weight multiplier not found for metal ${metalFamilyKey}, using default 1`);
     }
     
+    const finalGrams = baseGrams * weightMultiplier;
+    console.log(`✅ Weight calculation: ${baseGrams}g × ${weightMultiplier} = ${finalGrams}g`);
+    
     return {
-      grams: baseGrams * weightMultiplier,
+      grams: finalGrams,
       baseGrams,
       weightMultiplier
     };
   } else {
-    // No Stones - use base weight
+    // No Stones - use base weight (no multiplier)
+    console.log(`✅ No stones weight: ${baseGrams}g (no multiplier)`);
     return {
       grams: baseGrams,
       baseGrams,
@@ -281,11 +246,10 @@ function calculateLaborCosts(
 export function calculateCostBreakdown(
   variant: VariantSeed,
   ruleSet: RuleSet | NoStonesRuleSet,
-  sku: string,
-  weightTable?: WeightLookupTable
+  sku: string
 ): CostBreakdown {
   // Calculate variant grams
-  const gramsCalc = calculateVariantGrams(variant, ruleSet, weightTable);
+  const gramsCalc = calculateVariantGrams(variant, ruleSet);
   
   // Calculate diamond cost
   const diamondCalc = calculateDiamondCost(variant);

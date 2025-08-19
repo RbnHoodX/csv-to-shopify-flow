@@ -419,7 +419,7 @@ export function generateShopifyRowsWithCosts(
       });
       
       const costBreakdown = ruleSet 
-        ? calculateCostBreakdown(variant, ruleSet, sku, weightTable)
+        ? calculateCostBreakdown(variant, ruleSet, sku)
         : {
             diamondCost: 0, metalCost: 0, sideStoneCost: 0, centerStoneCost: 0,
             polishCost: 25, braceletsCost: 0, cadCreationCost: 20, constantCost: 25,
