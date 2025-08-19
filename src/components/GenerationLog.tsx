@@ -1,31 +1,37 @@
-import React from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Trash2, AlertCircle, Info, CheckCircle, AlertTriangle } from 'lucide-react';
-import { useCSVStore } from '@/store/csvStore';
-import type { LogEntry } from '@/store/csvStore';
+import React from "react";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Trash2,
+  AlertCircle,
+  Info,
+  CheckCircle,
+  AlertTriangle,
+} from "lucide-react";
+import { useCSVStore } from "@/store/csvStore";
+import type { LogEntry } from "@/store/csvStore";
 
-const LogIcon: React.FC<{ level: LogEntry['level'] }> = ({ level }) => {
+const LogIcon: React.FC<{ level: LogEntry["level"] }> = ({ level }) => {
   switch (level) {
-    case 'error':
+    case "error":
       return <AlertCircle className="h-4 w-4 text-destructive" />;
-    case 'warning':
+    case "warning":
       return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
-    case 'success':
+    case "success":
       return <CheckCircle className="h-4 w-4 text-green-500" />;
     default:
       return <Info className="h-4 w-4 text-blue-500" />;
   }
 };
 
-const LogBadge: React.FC<{ level: LogEntry['level'] }> = ({ level }) => {
+const LogBadge: React.FC<{ level: LogEntry["level"] }> = ({ level }) => {
   const variants = {
-    error: 'destructive',
-    warning: 'secondary',
-    success: 'default',
-    info: 'outline',
+    error: "destructive",
+    warning: "secondary",
+    success: "default",
+    info: "outline",
   } as const;
 
   return (
@@ -51,9 +57,9 @@ export const GenerationLog: React.FC = () => {
           )}
         </div>
       </CardHeader>
-      
+
       <CardContent className="p-0">
-        <ScrollArea className="h-64 px-6 pb-4">
+        <ScrollArea className="h-96 px-6 pb-4">
           {logs.length === 0 ? (
             <div className="text-center text-muted-foreground py-8">
               <Info className="h-8 w-8 mx-auto mb-2 opacity-50" />

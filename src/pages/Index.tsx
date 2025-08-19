@@ -1,11 +1,11 @@
-import React from 'react';
-import { FileUpload } from '@/components/FileUpload';
-import { GenerationLog } from '@/components/GenerationLog';
-import { CSVExport } from '@/components/CSVExport';
-import { DebugPanel } from '@/components/DebugPanel';
-import { InputSummaryTable } from '@/components/InputSummaryTable';
-import { VariantExpansionTable } from '@/components/VariantExpansionTable';
-import { useCSVStore } from '@/store/csvStore';
+import React from "react";
+import { FileUpload } from "@/components/FileUpload";
+import { GenerationLog } from "@/components/GenerationLog";
+import { CSVExport } from "@/components/CSVExport";
+import { DebugPanel } from "@/components/DebugPanel";
+import { InputSummaryTable } from "@/components/InputSummaryTable";
+import { VariantExpansionTable } from "@/components/VariantExpansionTable";
+import { useCSVStore } from "@/store/csvStore";
 
 const Index = () => {
   const { inputAnalysis, variantExpansion } = useCSVStore();
@@ -16,7 +16,7 @@ const Index = () => {
         <header className="text-center mb-8">
           <h1 className="text-4xl font-bold mb-2">CSV to Shopify Converter</h1>
           <p className="text-xl text-muted-foreground">
-            Process 4 CSVs into one Shopify-importable CSV following Base44 spec
+            Process 4 CSVs into one Shopify-importable CSV
           </p>
         </header>
 
@@ -28,7 +28,10 @@ const Index = () => {
               <FileUpload fileType="inputTest" title="Input test.csv" />
               <FileUpload fileType="naturalRules" title="Natural Rules.csv" />
               <FileUpload fileType="labGrownRules" title="LabGrown Rules.csv" />
-              <FileUpload fileType="noStonesRules" title="No Stones Rules.csv" />
+              <FileUpload
+                fileType="noStonesRules"
+                title="No Stones Rules.csv"
+              />
             </div>
           </div>
 
@@ -49,7 +52,7 @@ const Index = () => {
         {inputAnalysis && (
           <div className="space-y-4">
             <h2 className="text-2xl font-semibold mb-4">2.5. Input Analysis</h2>
-            <InputSummaryTable 
+            <InputSummaryTable
               summary={inputAnalysis.summary}
               stats={inputAnalysis.stats}
             />
@@ -59,8 +62,10 @@ const Index = () => {
         {/* Variant Expansion Section */}
         {variantExpansion && (
           <div className="space-y-4">
-            <h2 className="text-2xl font-semibold mb-4">2.7. Variant Expansion</h2>
-            <VariantExpansionTable 
+            <h2 className="text-2xl font-semibold mb-4">
+              2.7. Variant Expansion
+            </h2>
+            <VariantExpansionTable
               expansionResult={variantExpansion.result}
               expectedCounts={variantExpansion.expectedCounts}
             />
