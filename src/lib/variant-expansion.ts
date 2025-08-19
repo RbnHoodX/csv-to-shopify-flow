@@ -179,10 +179,17 @@ function expandGroupVariants(
 
   // Handle No Stones scenario
   if (isNoStones) {
-    console.log(`  📦 No Stones: ${(ruleSet as NoStonesRuleSet).metalsA.length} metal variants`);
-    // Use first row as representative
-    const inputRow = groupSummary.rows[0];
-    return expandNoStonesVariants(inputRow, ruleSet as NoStonesRuleSet);
+    const variantsPerRow = (ruleSet as NoStonesRuleSet).metalsA.length;
+    const expectedTotal = groupSummary.count * variantsPerRow;
+    console.log(`  📦 No Stones: ${groupSummary.count} rows × ${variantsPerRow} metal variants each = ${expectedTotal} total variants`);
+    
+    for (const inputRow of groupSummary.rows) {
+      const rowVariants = expandNoStonesVariants(inputRow, ruleSet as NoStonesRuleSet);
+      variants.push(...rowVariants);
+    }
+    
+    console.log(`  ✅ Generated ${variants.length} No Stones variants for ${groupSummary.coreNumber}`);
+    return variants;
   }
 
   const mainRuleSet = ruleSet as RuleSet;
@@ -305,7 +312,7 @@ export function calculateExpectedCounts(
     const handle = createHandle(groupSummary.rows[0]);
 
     if (isNoStones) {
-      expected[handle] = (ruleSet as NoStonesRuleSet).metalsA.length;
+      expected[handle] = groupSummary.count * (ruleSet as NoStonesRuleSet).metalsA.length;
     } else {
       const mainRuleSet = ruleSet as RuleSet;
       
