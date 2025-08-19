@@ -3,6 +3,7 @@ import type { VariantSeed } from './variant-expansion';
 import type { RuleSet, NoStonesRuleSet } from './rulebook-parser';
 import { calculateCostBreakdown, generateSKUWithRunningIndex, type CostBreakdown } from './cost-calculator';
 import type { WeightLookupTable } from './weight-lookup';
+import { generateSEOData } from './seo-generator';
 
 // Translation tables (extendable constants)
 export const METAL_TRANSLATIONS: Record<string, string> = {
@@ -424,9 +425,9 @@ export function generateShopifyRowsWithCosts(
             }
           };
 
-      // Generate enhanced SEO title and description
-      const seoTitle = isParent ? `${productInfo.title} | ${productInfo.qualities.join('/')} ${productInfo.diamondType} | ${productInfo.metals.join('/')} | ${productInfo.vendor}` : '';
-      const seoDescription = isParent ? `Shop ${productInfo.title} featuring ${productInfo.diamondType} in ${productInfo.metals.join('/')} metal. Premium quality ${productInfo.qualities.join('/')} diamonds. SKU: ${sku}. Free shipping available.` : '';
+      // Generate SEO data using business rules
+      const totalCarats = calculateTotalCaratWeight(variant);
+      const seoData = generateSEOData(variant, totalCarats, sku, isParent);
 
       const row: ShopifyRowWithCosts = {
         Handle: handle,
@@ -466,15 +467,15 @@ export function generateShopifyRowsWithCosts(
         'Image Alt Text': isParent ? productInfo.title : '',
         'Gift Card': 'FALSE',
         
-        // Enhanced SEO fields (parent-only)
-        'SEO Title': seoTitle,
-        'SEO Description': seoDescription,
+        // SEO fields (parent-only)
+        'SEO Title': seoData.seoTitle,
+        'SEO Description': seoData.seoDescription,
         
-        // Enhanced Google Shopping fields (parent-only)
+        // Google Shopping fields
         'Google Shopping / Google Product Category': isParent ? productInfo.googleCategory : '',
         'Google Shopping / Gender': isParent ? 'Female' : '',
         'Google Shopping / Age Group': isParent ? 'Adult' : '',
-        'Google Shopping / MPN': isParent ? sku : '',
+        'Google Shopping / MPN': seoData.googleMPN,  // MPN on all variants
         'Google Shopping / AdWords Grouping': '',
         'Google Shopping / AdWords Labels': '',
         'Google Shopping / Condition': isParent ? 'new' : '',

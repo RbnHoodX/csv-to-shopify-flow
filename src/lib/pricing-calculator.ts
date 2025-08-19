@@ -1,11 +1,16 @@
 import { trimAll, toFixed2 } from './csv-parser';
 import type { RuleSet, NoStonesRuleSet } from './rulebook-parser';
 
-// Default multipliers by type/category
+// Default multipliers by type/category - Business Rules
 const DEFAULT_MULTIPLIERS: Record<string, number> = {
   'rings': 2,
+  'ring': 2,
   'bracelets': 2,
+  'bracelet': 2,
   'pendants': 2.5,
+  'pendant': 2.5,
+  'engagement rings': 2,
+  'wedding bands': 2,
   'default': 2.5 // Fallback
 };
 
@@ -112,9 +117,12 @@ export function calculatePricing(
     marginSource = 'fallback';
   }
 
-  // Calculate prices
+  // Calculate prices using business rules
+  // Variant Price: (Cost per item * Markup Factor) - 0.01
   const variantPrice = Math.max(0, (cost * multiplier) - 0.01);
-  const compareAtPrice = cost * 4;
+  
+  // Compare At Price: Higher "original" price (Cost per item * 4 or 5)
+  const compareAtPrice = cost * (multiplier >= 2.5 ? 5 : 4);
 
   return {
     cost,
