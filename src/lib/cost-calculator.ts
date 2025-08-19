@@ -77,6 +77,19 @@ function calculateVariantGrams(
 
   console.log(`💎 Calculating grams for ${variant.core} with ${variant.metalCode}: base=${baseGrams}g`);
 
+  // Debug weight table status
+  if (weightTable) {
+    console.log(`📊 Weight table available: ${weightTable.size} core numbers loaded`);
+    const coreWeights = weightTable.get(variant.core);
+    if (coreWeights) {
+      console.log(`✅ Found weights for ${variant.core}:`, Array.from(coreWeights.entries()));
+    } else {
+      console.warn(`❌ No weights found for core ${variant.core} in lookup table`);
+    }
+  } else {
+    console.warn(`❌ No weight lookup table provided - upload weight CSV first`);
+  }
+
   // If we have a weight lookup table, use it for precise per-product weights
   if (weightTable) {
     const { weight, isLookup } = getVariantWeight(

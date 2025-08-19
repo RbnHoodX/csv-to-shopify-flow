@@ -411,6 +411,13 @@ export function generateShopifyRowsWithCosts(
       const sku = generateSKUWithRunningIndex(variant.core, sortedVariants, index);
       
       // Calculate cost breakdown
+      console.log(`🔍 Weight table status for ${variant.core}:`, {
+        hasWeightTable: !!weightTable,
+        weightTableSize: weightTable?.size || 0,
+        metalCode: variant.metalCode,
+        scenario: variant.scenario
+      });
+      
       const costBreakdown = ruleSet 
         ? calculateCostBreakdown(variant, ruleSet, sku, weightTable)
         : {
