@@ -201,7 +201,10 @@ function generateTCWBucketTags(minTCW: number, maxTCW: number): string[] {
  */
 function generateBodyHTML(variants: VariantSeed[], title: string, scenario: string): string {
   const firstVariant = variants[0];
-  const diamondType = firstVariant.inputRowRef.diamondsType || 'diamonds';
+  const inputRow = firstVariant.inputRowRef;
+  const diamondType = inputRow.diamondsType || 'diamonds';
+  const core = firstVariant.core;
+  const category = trimAll(inputRow['Category'] || 'Jewelry');
   
   if (scenario === 'NoStones') {
     return `<p><strong>${title}</strong></p>
@@ -209,26 +212,51 @@ function generateBodyHTML(variants: VariantSeed[], title: string, scenario: stri
 <p>Perfect for everyday wear or special occasions.</p>`;
   }
   
-  if (scenario === 'Unique+Center') {
-    const centerShape = firstVariant.inputRowRef['Center shape'] || 'round';
-    const centerSize = firstVariant.centerSize || '1.00';
-    const sideShapes = firstVariant.inputRowRef['Side shapes'] || firstVariant.inputRowRef['Side shape'] || '';
+  // Calculate carat range for detailed description
+  const caratWeights = variants.map(calculateTotalCaratWeight);
+  const minTCW = Math.min(...caratWeights);
+  const maxTCW = Math.max(...caratWeights);
+  const caratRange = minTCW === maxTCW ? `${minTCW.toFixed(2)}` : `${minTCW.toFixed(2)}-${maxTCW.toFixed(2)}`;
+  
+  // Get diamond details
+  const centerShape = inputRow['Center shape'] || 'round';
+  const sideShapes = inputRow['Side shapes'] || inputRow['Side shape'] || '';
+  
+  // Build the detailed HTML body format
+  let bodyHTML = `<p><b>${title}<br></b>`;
+  
+  if (scenario === 'Unique+Center' && firstVariant.centerSize) {
+    const centerSize = toCt2(toNum(firstVariant.centerSize));
+    bodyHTML += `<b>${centerSize} Carat:</b><span> ${centerShape} cut center diamond weighing ${centerSize} carat</span><br>`;
     
-    return `<p><strong>${title}</strong></p>
-<p>Stunning ${diamondType} jewelry featuring a ${centerSize}CT ${centerShape} center stone${sideShapes ? ` with ${sideShapes} side stones` : ''}.</p>
-<p>Expertly crafted with premium materials and exceptional attention to detail.</p>
-<p>Perfect for engagements, anniversaries, or any special occasion.</p>`;
+    // Add side stone info if present
+    const sumSideCt = calculateSumSideCt(inputRow);
+    if (sumSideCt > 0) {
+      const sideCount = toNum(inputRow['Side Stone Count'] || inputRow['Side count'] || '0');
+      if (sideCount > 0) {
+        bodyHTML += `<b>${toCt2(sumSideCt)} Carat:</b><span> ${sideCount} ${sideShapes || 'round'} cut diamonds weighing ${toCt2(sumSideCt)} carat</span><br>`;
+      }
+    }
+  } else {
+    // For repeating or no-center scenarios
+    const totalCt = toNum(inputRow['Total Ct Weight'] || inputRow['Total ct'] || inputRow['TotalCt'] || '0');
+    if (totalCt > 0) {
+      bodyHTML += `<b>${toCt2(totalCt)} Carat:</b><span> diamonds weighing ${toCt2(totalCt)} carat</span><br>`;
+    }
   }
   
-  // Repeating scenario
-  const totalCtRange = variants.length > 1 ? 
-    `${Math.min(...variants.map(calculateTotalCaratWeight)).toFixed(2)}-${Math.max(...variants.map(calculateTotalCaratWeight)).toFixed(2)}CT` :
-    `${calculateTotalCaratWeight(variants[0]).toFixed(2)}CT`;
-    
-  return `<p><strong>${title}</strong></p>
-<p>Beautiful ${diamondType} jewelry collection featuring ${totalCtRange} total carat weight.</p>
-<p>Available in multiple configurations to suit your preferences.</p>
-<p>Expertly crafted with premium materials and exceptional attention to detail.</p>`;
+  bodyHTML += `</p>`;
+  
+  // Add detailed description paragraph
+  const diamondTypeText = diamondType.toLowerCase().includes('natural') ? 'natural diamonds' : 
+                         diamondType.toLowerCase().includes('labgrown') ? 'lab grown diamonds' : 
+                         'diamonds';
+  
+  const subcategory = trimAll(inputRow['Subcategory'] || inputRow['Type'] || category);
+  
+  bodyHTML += `<p><span>Experience a true luxury with our ${caratRange} CT ${collectShapes(variants).join(' & ')} Cut - ${subcategory} MDL#${core}. This ${subcategory} crafted with ${caratRange} carat ${diamondTypeText}. Select your choice of precious metal between 14 Karat, 18 Karat Yellow, White and Rose Gold OR Platinum. Shine with uniqueness with Primestyle diamond ${subcategory}.</span></p>`;
+  
+  return bodyHTML;
 }
 
 /**
@@ -407,7 +435,7 @@ export function generateShopifyRowsWithCosts(
         Vendor: isParent ? productInfo.vendor : '',
         Type: isParent ? productInfo.type : '',
         Tags: isParent ? productInfo.tags : '',
-        Published: isParent ? 'TRUE' : '',
+        Published: 'TRUE', // All items should have TRUE value
         
         // Option Names (parent-only, blank for No Stones)
         'Option1 Name': isParent && !isNoStones ? 'Metal/Color' : '',
