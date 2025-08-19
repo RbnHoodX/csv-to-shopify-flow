@@ -1,4 +1,4 @@
-import { trimAll, toNum, toFixed2 } from './csv-parser';
+import { trimAll, toNum, toFixed2, ctStr, calculateSumSideCt } from './csv-parser';
 import type { VariantSeed } from './variant-expansion';
 import type { RuleSet, NoStonesRuleSet } from './rulebook-parser';
 import { calculatePricing, type PricingResult } from './pricing-calculator';
@@ -53,14 +53,16 @@ export function generateSKUWithRunningIndex(
 }
 
 /**
- * Calculate variant grams
+ * Calculate variant grams using proper metal weight calculation
  */
 function calculateVariantGrams(
   variant: VariantSeed,
   ruleSet: RuleSet | NoStonesRuleSet
 ): { grams: number; baseGrams: number; weightMultiplier: number } {
-  // Get base grams from input (14KT baseline)
+  // Get base grams from input (14KT baseline weight)
   const baseGrams = toNum(
+    variant.inputRowRef['Grams Weight 14kt'] ||
+    variant.inputRowRef['GramsWeight14kt'] ||
     variant.inputRowRef['Base Grams'] ||
     variant.inputRowRef['BaseGrams'] ||
     variant.inputRowRef['Weight'] ||
@@ -69,7 +71,7 @@ function calculateVariantGrams(
   );
 
   if ('weightIndex' in ruleSet) {
-    // For Natural/LabGrown rules
+    // For Natural/LabGrown rules - apply metal weight multiplier
     const metalFamilyKey = getMetalFamilyKey(variant.metalCode);
     const weightMultiplier = ruleSet.weightIndex.get(metalFamilyKey) || 1;
     
@@ -104,21 +106,17 @@ function calculateDiamondCost(variant: VariantSeed): { cost: number; carats: num
   let pricePerCarat = 150; // Default price per carat
 
   if (variant.scenario === 'Unique+Center' && variant.centerSize) {
-    // With center: CenterSize + SumSideCt
+    // With center: centerSize + sumSideCt (sum all side columns)
     const centerCt = toNum(variant.centerSize);
-    const sideCt = toNum(
-      variant.inputRowRef['Side ct'] ||
-      variant.inputRowRef['Side Ct'] ||
-      variant.inputRowRef['SideCt'] ||
-      '0'
-    );
-    totalCarats = centerCt + sideCt;
+    const sumSideCt = calculateSumSideCt(variant.inputRowRef);
+    totalCarats = centerCt + sumSideCt;
   } else {
     // No center: use TotalCtWeight
     totalCarats = toNum(
       variant.inputRowRef['Total Ct Weight'] ||
       variant.inputRowRef['Total ct'] ||
       variant.inputRowRef['TotalCt'] ||
+      variant.inputRowRef['Total Carat'] ||
       '0'
     );
   }

@@ -71,6 +71,46 @@ export function ctStr(total: number | string, center?: number | string): string 
   return totalStr;
 }
 
+/**
+ * Calculate sum of all side stone carat columns from input row
+ * Looks for columns like: Side ct, Side1 ct, Side2 ct, Side Ct 1, etc.
+ */
+export function calculateSumSideCt(inputRow: any): number {
+  let sumSideCt = 0;
+  
+  // Common side carat column patterns
+  const sideCaratPatterns = [
+    'Side ct', 'Side Ct', 'SideCt', 'Side Carat',
+    'Side1 ct', 'Side1 Ct', 'Side1Ct', 'Side1 Carat',
+    'Side2 ct', 'Side2 Ct', 'Side2Ct', 'Side2 Carat',
+    'Side3 ct', 'Side3 Ct', 'Side3Ct', 'Side3 Carat',
+    'Side4 ct', 'Side4 Ct', 'Side4Ct', 'Side4 Carat',
+    'Side5 ct', 'Side5 Ct', 'Side5Ct', 'Side5 Carat',
+    'Side Ct 1', 'Side Ct 2', 'Side Ct 3', 'Side Ct 4', 'Side Ct 5',
+    'Sum Side Ct', 'SumSideCt', 'Sum Side Carat'
+  ];
+  
+  // Check all possible side carat columns
+  for (const pattern of sideCaratPatterns) {
+    const value = inputRow[pattern];
+    if (value !== undefined && value !== null && value !== '') {
+      const numValue = toNum(value);
+      if (!isNaN(numValue)) {
+        sumSideCt += numValue;
+      }
+    }
+  }
+  
+  return sumSideCt;
+}
+
+/**
+ * Format number to 2 decimal places for carat display (toCt2)
+ */
+export function toCt2(n: number | string | null | undefined): string {
+  return toFixed2(n);
+}
+
 export enum DiamondsType {
   Natural = 'Natural',
   Labgrown = 'Labgrown',

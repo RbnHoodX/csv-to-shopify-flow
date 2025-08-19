@@ -1,4 +1,4 @@
-import { trimAll, toNum, toFixed2, ctStr } from './csv-parser';
+import { trimAll, toNum, toFixed2, ctStr, calculateSumSideCt, toCt2 } from './csv-parser';
 import type { VariantSeed } from './variant-expansion';
 import type { RuleSet, NoStonesRuleSet } from './rulebook-parser';
 import { calculateCostBreakdown, generateSKUWithRunningIndex, type CostBreakdown } from './cost-calculator';
@@ -107,19 +107,13 @@ function translateQuality(qualityCode: string): string {
 }
 
 /**
- * Calculate total carat weight for a variant
+ * Calculate total carat weight for a variant (for internal calculations)
  */
 function calculateTotalCaratWeight(variant: VariantSeed): number {
   if (variant.scenario === 'Unique+Center' && variant.centerSize) {
-    const sideCt = toNum(
-      variant.inputRowRef['Side ct'] ||
-      variant.inputRowRef['Side Ct'] ||
-      variant.inputRowRef['SideCt'] ||
-      variant.inputRowRef['Side Carat'] ||
-      '0'
-    );
+    const sumSideCt = calculateSumSideCt(variant.inputRowRef);
     const centerCt = toNum(variant.centerSize);
-    return sideCt + centerCt;
+    return sumSideCt + centerCt;
   } else {
     return toNum(
       variant.inputRowRef['Total Ct Weight'] ||
@@ -132,23 +126,25 @@ function calculateTotalCaratWeight(variant: VariantSeed): number {
 }
 
 /**
- * Calculate total carat string based on scenario
+ * Calculate total carat string for Option2 Value based on scenario
  */
 function calculateTotalCarat(variant: VariantSeed): string {
   if (variant.scenario === 'Unique+Center' && variant.centerSize) {
-    const sideCt = toNum(
-      variant.inputRowRef['Side ct'] ||
-      variant.inputRowRef['Side Ct'] ||
-      variant.inputRowRef['SideCt'] ||
-      variant.inputRowRef['Side Carat'] ||
+    // Fix: sum all side columns + center size from rule
+    const sumSideCt = calculateSumSideCt(variant.inputRowRef);
+    const centerCt = toNum(variant.centerSize);
+    const totalVariantCt = sumSideCt + centerCt;
+    return `${toCt2(totalVariantCt)}CT Total (${toCt2(centerCt)}CT Center)`;
+  } else {
+    // For no-center scenarios: use TotalCtWeight from row
+    const totalCt = toNum(
+      variant.inputRowRef['Total Ct Weight'] ||
+      variant.inputRowRef['Total ct'] ||
+      variant.inputRowRef['TotalCt'] ||
+      variant.inputRowRef['Total Carat'] ||
       '0'
     );
-    const centerCt = toNum(variant.centerSize);
-    const total = sideCt + centerCt;
-    return ctStr(total, centerCt);
-  } else {
-    const totalCt = calculateTotalCaratWeight(variant);
-    return ctStr(totalCt);
+    return `${toCt2(totalCt)}CT Total`;
   }
 }
 
@@ -377,13 +373,13 @@ export function generateShopifyRowsWithCosts(
         'Option3 Name': isParent && !isNoStones ? 'Diamond Quality' : '',
         'Option3 Value': isNoStones || !variant.qualityCode ? '' : translateQuality(variant.qualityCode),
         
-        // Variant-specific fields with calculated costs
+        // Variant-specific fields with calculated costs and corrected inventory settings
         'Variant SKU': sku,
         'Variant Grams': toFixed2(costBreakdown.variantGrams),
-        'Variant Inventory Tracker': 'shopify',
-        'Variant Inventory Qty': '10',
-        'Variant Inventory Policy': 'deny',
-        'Variant Fulfillment Service': 'manual',
+        'Variant Inventory Tracker': '', // Fixed: blank (not "shopify")
+        'Variant Inventory Qty': '1', // Fixed: 1 (not 10)
+        'Variant Inventory Policy': 'continue', // Fixed: "continue" (not "deny")
+        'Variant Fulfillment Service': 'Manual', // Fixed: "Manual" with capital M
         'Variant Price': toFixed2(costBreakdown.pricing.variantPrice),
         'Variant Compare At Price': toFixed2(costBreakdown.pricing.compareAtPrice),
         'Variant Requires Shipping': 'TRUE',
