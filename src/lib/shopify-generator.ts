@@ -2,6 +2,7 @@ import { trimAll, toNum, toFixed2, ctStr, calculateSumSideCt, toCt2 } from './cs
 import type { VariantSeed } from './variant-expansion';
 import type { RuleSet, NoStonesRuleSet } from './rulebook-parser';
 import { calculateCostBreakdown, generateSKUWithRunningIndex, type CostBreakdown } from './cost-calculator';
+import type { WeightLookupTable } from './weight-lookup';
 
 // Translation tables (extendable constants)
 export const METAL_TRANSLATIONS: Record<string, string> = {
@@ -373,7 +374,8 @@ export function generateShopifyRowsWithCosts(
   variants: VariantSeed[],
   naturalRules?: RuleSet,
   labGrownRules?: RuleSet,
-  noStonesRules?: NoStonesRuleSet
+  noStonesRules?: NoStonesRuleSet,
+  weightTable?: WeightLookupTable
 ): ShopifyRowWithCosts[] {
   if (variants.length === 0) return [];
 
@@ -409,7 +411,7 @@ export function generateShopifyRowsWithCosts(
       
       // Calculate cost breakdown
       const costBreakdown = ruleSet 
-        ? calculateCostBreakdown(variant, ruleSet, sku)
+        ? calculateCostBreakdown(variant, ruleSet, sku, weightTable)
         : {
             diamondCost: 0, metalCost: 0, sideStoneCost: 0, centerStoneCost: 0,
             polishCost: 25, braceletsCost: 0, cadCreationCost: 20, constantCost: 25,
@@ -525,8 +527,14 @@ export function generateShopifyRowsWithCosts(
 /**
  * Generate Shopify rows from variant seeds (backwards compatibility)
  */
-export function generateShopifyRows(variants: VariantSeed[]): ShopifyRow[] {
-  return generateShopifyRowsWithCosts(variants).map(({ costBreakdown, ...row }) => row);
+export function generateShopifyRows(
+  variants: VariantSeed[], 
+  naturalRules?: RuleSet, 
+  labGrownRules?: RuleSet, 
+  noStonesRules?: NoStonesRuleSet, 
+  weightTable?: WeightLookupTable
+): ShopifyRow[] {
+  return generateShopifyRowsWithCosts(variants, naturalRules, labGrownRules, noStonesRules, weightTable).map(({ costBreakdown, ...row }) => row);
 }
 
 /**

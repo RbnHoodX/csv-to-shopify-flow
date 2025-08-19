@@ -2,6 +2,8 @@ import { trimAll, toNum, toFixed2, ctStr, calculateSumSideCt } from './csv-parse
 import type { VariantSeed } from './variant-expansion';
 import type { RuleSet, NoStonesRuleSet } from './rulebook-parser';
 import { calculatePricing, type PricingResult } from './pricing-calculator';
+import type { WeightLookupTable } from './weight-lookup';
+import { getVariantWeight } from './weight-lookup';
 
 export interface CostBreakdown {
   diamondCost: number;
@@ -53,14 +55,16 @@ export function generateSKUWithRunningIndex(
 }
 
 /**
- * Calculate variant grams using proper metal weight calculation
+ * Calculate variant grams using weight lookup table by core number and metal
  */
 function calculateVariantGrams(
   variant: VariantSeed,
-  ruleSet: RuleSet | NoStonesRuleSet
+  ruleSet: RuleSet | NoStonesRuleSet,
+  weightTable?: WeightLookupTable
 ): { grams: number; baseGrams: number; weightMultiplier: number } {
-  // Get base grams from input (14KT baseline weight)
+  // Get base grams from input (14KT baseline weight) as fallback
   const baseGrams = toNum(
+    variant.inputRowRef['Grams Weight'] ||
     variant.inputRowRef['Grams Weight 14kt'] ||
     variant.inputRowRef['GramsWeight14kt'] ||
     variant.inputRowRef['Base Grams'] ||
@@ -70,6 +74,27 @@ function calculateVariantGrams(
     '5' // Default if missing
   );
 
+  // If we have a weight lookup table, use it for precise weights
+  if (weightTable) {
+    const { weight, isLookup } = getVariantWeight(
+      weightTable,
+      variant.core,
+      variant.metalCode,
+      baseGrams
+    );
+
+    if (isLookup) {
+      // Using precise lookup weight
+      const weightMultiplier = baseGrams > 0 ? weight / baseGrams : 1;
+      return {
+        grams: weight,
+        baseGrams,
+        weightMultiplier
+      };
+    }
+  }
+
+  // Fallback to original multiplier approach
   if ('weightIndex' in ruleSet) {
     // For Natural/LabGrown rules - apply metal weight multiplier
     const metalFamilyKey = getMetalFamilyKey(variant.metalCode);
@@ -236,10 +261,11 @@ function calculateLaborCosts(
 export function calculateCostBreakdown(
   variant: VariantSeed,
   ruleSet: RuleSet | NoStonesRuleSet,
-  sku: string
+  sku: string,
+  weightTable?: WeightLookupTable
 ): CostBreakdown {
   // Calculate variant grams
-  const gramsCalc = calculateVariantGrams(variant, ruleSet);
+  const gramsCalc = calculateVariantGrams(variant, ruleSet, weightTable);
   
   // Calculate diamond cost
   const diamondCalc = calculateDiamondCost(variant);

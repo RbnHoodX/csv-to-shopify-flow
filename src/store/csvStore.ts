@@ -3,6 +3,7 @@ import { parseCsv, normalizeRow, type ParsedCSV } from '@/lib/csv-parser';
 import { extractRuleSets, extractNoStonesRuleSets, logRuleSetStats, type RuleSet, type NoStonesRuleSet } from '@/lib/rulebook-parser';
 import { processInputData, type GroupSummary } from '@/lib/input-processor';
 import { expandAllVariants, calculateExpectedCounts, type ExpansionResult } from '@/lib/variant-expansion';
+import type { WeightLookupTable } from '@/lib/weight-lookup';
 
 export type CSVFile = {
   name: string;
@@ -29,6 +30,7 @@ interface CSVStore {
     labGrownRules: CSVFile;
     noStonesRules: CSVFile;
   };
+  weightTable?: WeightLookupTable;
   inputAnalysis?: {
     summary: GroupSummary[];
     stats: {
@@ -55,6 +57,7 @@ interface CSVStore {
   generateShopifyCSV: () => Promise<void>;
   processInputAnalysis: () => void;
   processVariantExpansion: () => void;
+  setWeightTable: (weightTable: WeightLookupTable) => void;
 }
 
 const createEmptyFile = (name: string): CSVFile => ({
@@ -316,7 +319,8 @@ export const useCSVStore = create<CSVStore>((set, get) => ({
         variantExpansion.result.variants,
         naturalRules,
         labGrownRules,
-        noStonesRules
+        noStonesRules,
+        get().weightTable
       );
       
       // Calculate cost statistics
@@ -376,5 +380,10 @@ export const useCSVStore = create<CSVStore>((set, get) => ({
       addLog('error', `❌ Pipeline failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       console.error('Generation pipeline error:', error);
     }
+  },
+
+  setWeightTable: (weightTable) => {
+    set({ weightTable });
+    get().addLog('success', `Weight lookup table loaded: ${weightTable.size} core numbers`);
   },
 }));
