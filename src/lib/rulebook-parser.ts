@@ -218,14 +218,25 @@ export function extractRuleSets(ruleRows: Record<string, string>[]): RuleSet {
   const uniqueMetalsJ = [...new Set(metalsJ)].filter(m => m.length > 0);
   const uniqueQualitiesK = [...new Set(qualitiesK)].filter(q => q.length > 0);
 
-  // Find where lookup tables start by looking for the first row after rule blocks
+  // Find where lookup tables start by looking for Weight Index header specifically
   let tableStartRow = 0;
   for (let i = 0; i < ruleRows.length; i++) {
     const row = ruleRows[i];
     const rowValues = Object.values(row);
-    const firstCell = trimAll(rowValues[0] || '');
     
-    // Look for typical lookup table headers
+    // Look for "Weight Index" header specifically
+    const hasWeightIndex = rowValues.some(cell => 
+      trimAll(cell || '').toLowerCase().includes('weight index')
+    );
+    
+    if (hasWeightIndex) {
+      tableStartRow = i + 1; // Start from the row after the header
+      console.log(`📊 Found Weight Index table starting at row ${tableStartRow}`);
+      break;
+    }
+    
+    // Fallback: look for typical lookup table headers
+    const firstCell = trimAll(rowValues[0] || '');
     if (firstCell.toLowerCase().includes('metal') && 
         (trimAll(rowValues[1] || '').toLowerCase().includes('weight') || 
          trimAll(rowValues[1] || '').toLowerCase().includes('price'))) {
@@ -242,13 +253,30 @@ export function extractRuleSets(ruleRows: Record<string, string>[]): RuleSet {
 
   // Try to extract lookup tables if we found a starting point
   if (tableStartRow > 0) {
-    // Weight Index table
-    const weightTable = extractLookupTable(
-      ruleRows, 
-      tableStartRow, 
-      headers[0] || 'Metal', 
-      headers[1] || 'Weight'
-    );
+    // Find Weight Index column by searching for "Weight Index" header
+    const weightIndexColIndex = findColumnIndex(headers, 'Weight Index');
+    let weightTable = new Map<string, number>();
+    
+    if (weightIndexColIndex >= 0 && weightIndexColIndex + 1 < headers.length) {
+      console.log(`📊 Found Weight Index column at index ${weightIndexColIndex} (${headers[weightIndexColIndex]})`);
+      console.log(`📊 Using value column at index ${weightIndexColIndex + 1} (${headers[weightIndexColIndex + 1]})`);
+      
+      weightTable = extractLookupTable(
+        ruleRows, 
+        tableStartRow, 
+        headers[weightIndexColIndex], 
+        headers[weightIndexColIndex + 1]
+      );
+    } else {
+      console.warn('Weight Index column not found, trying fallback approach');
+      // Fallback: try to find it by scanning for actual weight data
+      weightTable = extractLookupTable(
+        ruleRows, 
+        tableStartRow, 
+        headers[0] || 'Metal', 
+        headers[1] || 'Weight'
+      );
+    }
     
     // Metal Price table (look for next table)
     let priceTableStart = tableStartRow + 10;
