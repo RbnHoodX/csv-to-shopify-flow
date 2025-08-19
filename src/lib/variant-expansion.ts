@@ -157,6 +157,8 @@ function expandGroupVariants(
 ): VariantSeed[] {
   const variants: VariantSeed[] = [];
 
+  console.log(`🔧 Expanding variants for ${groupSummary.coreNumber}: ${groupSummary.count} rows, ${groupSummary.isUnique ? 'unique' : 'repeating'}`);
+
   // Determine which rulebook to use
   let ruleSet: RuleSet | NoStonesRuleSet | undefined;
   let isNoStones = false;
@@ -177,6 +179,7 @@ function expandGroupVariants(
 
   // Handle No Stones scenario
   if (isNoStones) {
+    console.log(`  📦 No Stones: ${(ruleSet as NoStonesRuleSet).metalsA.length} metal variants`);
     // Use first row as representative
     const inputRow = groupSummary.rows[0];
     return expandNoStonesVariants(inputRow, ruleSet as NoStonesRuleSet);
@@ -190,17 +193,27 @@ function expandGroupVariants(
     
     if (hasCenterCarat(inputRow)) {
       // Unique + Center: G × H × I
+      const expectedVariants = mainRuleSet.metalsG.length * mainRuleSet.centersH.length * mainRuleSet.qualitiesI.length;
+      console.log(`  💎 Unique+Center: ${mainRuleSet.metalsG.length} × ${mainRuleSet.centersH.length} × ${mainRuleSet.qualitiesI.length} = ${expectedVariants} variants`);
       return expandUniqueCenterVariants(inputRow, mainRuleSet);
     } else {
       // Unique + No Center: J × K
+      const expectedVariants = mainRuleSet.metalsJ.length * mainRuleSet.qualitiesK.length;
+      console.log(`  🔹 Unique+NoCenter: ${mainRuleSet.metalsJ.length} × ${mainRuleSet.qualitiesK.length} = ${expectedVariants} variants`);
       return expandNoCenterVariants(inputRow, mainRuleSet, 'Unique+NoCenter');
     }
   } else {
     // Repeating: J × K for each base row
+    const variantsPerRow = mainRuleSet.metalsJ.length * mainRuleSet.qualitiesK.length;
+    const expectedTotal = groupSummary.count * variantsPerRow;
+    console.log(`  🔄 Repeating: ${groupSummary.count} rows × ${variantsPerRow} variants each = ${expectedTotal} total variants`);
+    
     for (const inputRow of groupSummary.rows) {
       const rowVariants = expandNoCenterVariants(inputRow, mainRuleSet, 'Repeating');
       variants.push(...rowVariants);
     }
+    
+    console.log(`  ✅ Generated ${variants.length} variants for ${groupSummary.coreNumber}`);
   }
 
   return variants;

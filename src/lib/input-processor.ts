@@ -24,6 +24,8 @@ export function groupByCore(inputRows: Record<string, string>[]): { groups: Map<
   const coreOrder: string[] = [];
   const seenCores = new Set<string>();
 
+  console.log(`🔍 Grouping ${inputRows.length} input rows by core number...`);
+
   for (const row of inputRows) {
     // Find Core Number column (try various common names)
     const coreNumber = trimAll(
@@ -44,7 +46,10 @@ export function groupByCore(inputRows: Record<string, string>[]): { groups: Map<
       ''
     );
 
-    if (!coreNumber) continue;
+    if (!coreNumber) {
+      console.warn('⚠️ Row missing core number:', Object.keys(row));
+      continue;
+    }
 
     const inputRow: InputRow = {
       coreNumber,
@@ -62,6 +67,16 @@ export function groupByCore(inputRows: Record<string, string>[]): { groups: Map<
     }
     groups.get(coreNumber)!.push(inputRow);
   }
+
+  // Log grouping results
+  const largestGroups = Array.from(groups.entries())
+    .sort((a, b) => b[1].length - a[1].length)
+    .slice(0, 5);
+  
+  console.log(`📊 Grouping complete: ${groups.size} unique core numbers`);
+  largestGroups.forEach(([core, rows]) => {
+    console.log(`  ${core}: ${rows.length} rows (${rows.length === 1 ? 'unique' : 'repeating'})`);
+  });
 
   return { groups, coreOrder };
 }
