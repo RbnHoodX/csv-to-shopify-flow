@@ -5,11 +5,10 @@ import { CSVExport } from "@/components/CSVExport";
 import { DebugPanel } from "@/components/DebugPanel";
 import { InputSummaryTable } from "@/components/InputSummaryTable";
 import { VariantExpansionTable } from "@/components/VariantExpansionTable";
-import { WeightLookupUpload } from "@/components/WeightLookupUpload";
 import { useCSVStore } from "@/store/csvStore";
 
 const Index = () => {
-  const { inputAnalysis, variantExpansion, weightTable, setWeightTable } = useCSVStore();
+  const { inputAnalysis, variantExpansion } = useCSVStore();
 
   return (
     <div className="min-h-screen bg-background p-6">
@@ -32,15 +31,6 @@ const Index = () => {
               <FileUpload
                 fileType="noStonesRules"
                 title="No Stones Rules.csv"
-              />
-            </div>
-            
-            {/* Weight Lookup Upload */}
-            <div className="mt-6">
-              <h3 className="text-lg font-medium mb-3">Weight Lookup Table (Optional)</h3>
-              <WeightLookupUpload 
-                onWeightTableLoaded={setWeightTable}
-                currentTable={weightTable}
               />
             </div>
           </div>
