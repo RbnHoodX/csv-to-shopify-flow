@@ -221,31 +221,22 @@ export function extractRuleSets(ruleRows: Record<string, string>[]): RuleSet {
   console.log(`🔍 All headers found:`, headers);
   console.log(`🔍 Total rows in file: ${ruleRows.length}`);
 
-  // Find where lookup tables start by looking for Weight Index header specifically
-  let tableStartRow = 0;
-  for (let i = 0; i < ruleRows.length; i++) {
+  // Weight Index is already in headers, find where data starts
+  let tableStartRow = 1; // Start from row 1 by default
+  
+  // Look for first row with actual weight index data
+  for (let i = 1; i < Math.min(ruleRows.length, 50); i++) {
     const row = ruleRows[i];
     const rowValues = Object.values(row);
     
-    // Look for "Weight Index" header specifically
-    const hasWeightIndex = rowValues.some(cell => 
-      trimAll(cell || '').toLowerCase().includes('weight index')
-    );
+    // Check if this row has weight index data (metal codes like 14W, 18K, etc.)
+    const firstCol = trimAll(rowValues[11] || ''); // Weight Index column
+    const secondCol = trimAll(rowValues[12] || ''); // Next column
     
-    if (hasWeightIndex) {
-      tableStartRow = i + 1; // Start from the row after the header
-      console.log(`📊 Found Weight Index table starting at row ${tableStartRow}`);
-      console.log(`📊 Weight Index header row:`, rowValues);
-      break;
-    }
-    
-    // Fallback: look for typical lookup table headers
-    const firstCell = trimAll(rowValues[0] || '');
-    if (firstCell.toLowerCase().includes('metal') && 
-        (trimAll(rowValues[1] || '').toLowerCase().includes('weight') || 
-         trimAll(rowValues[1] || '').toLowerCase().includes('price'))) {
+    if (firstCol && (firstCol.match(/^\d+[WYR]?$/) || firstCol.includes('PLT'))) {
       tableStartRow = i;
-      console.log(`📊 Found fallback table starting at row ${tableStartRow}`);
+      console.log(`📊 Found Weight Index data starting at row ${tableStartRow}`);
+      console.log(`📊 First weight entry: ${firstCol} → ${secondCol}`);
       break;
     }
   }
@@ -258,78 +249,75 @@ export function extractRuleSets(ruleRows: Record<string, string>[]): RuleSet {
   const labor = new Map<string, number>();
   const margins: Array<{begin: number, end?: number, m: number}> = [];
 
-  // Try to extract lookup tables if we found a starting point
-  if (tableStartRow > 0) {
-    // Find Weight Index column by searching for "Weight Index" header
-    const weightIndexColIndex = findColumnIndex(headers, 'Weight Index');
-    console.log(`🔍 Searching for 'Weight Index' in headers, found at index: ${weightIndexColIndex}`);
+  // Find Weight Index column by searching for "Weight Index" header
+  const weightIndexColIndex = findColumnIndex(headers, 'Weight Index');
+  console.log(`🔍 Searching for 'Weight Index' in headers, found at index: ${weightIndexColIndex}`);
+  
+  let weightTable = new Map<string, number>();
+  
+  if (weightIndexColIndex >= 0) {
+    console.log(`📊 Found Weight Index column at index ${weightIndexColIndex} (${headers[weightIndexColIndex]})`);
+    console.log(`📊 Will use next column at index ${weightIndexColIndex + 1} for multipliers`);
     
-    let weightTable = new Map<string, number>();
-    
-    if (weightIndexColIndex >= 0) {
-      console.log(`📊 Found Weight Index column at index ${weightIndexColIndex} (${headers[weightIndexColIndex]})`);
-      console.log(`📊 Will use next column at index ${weightIndexColIndex + 1} for multipliers`);
-      
-      // Extract weight index data: metal codes from Weight Index column, multipliers from next column
-      for (let i = tableStartRow; i < ruleRows.length; i++) {
-        const row = ruleRows[i];
-        const rowValues = Object.values(row);
-        
-        console.log(`📊 Row ${i} values:`, rowValues.slice(weightIndexColIndex, weightIndexColIndex + 2));
-        
-        // Get metal code from Weight Index column
-        const metalCode = trimAll(rowValues[weightIndexColIndex] || '');
-        // Get multiplier from next column
-        const multiplier = toNum(rowValues[weightIndexColIndex + 1] || '');
-        
-        console.log(`📊 Processing: metal='${metalCode}', multiplier=${multiplier}`);
-        
-        if (metalCode && !isNaN(multiplier)) {
-          weightTable.set(metalCode, multiplier);
-          console.log(`📊 Weight Index: ${metalCode} → ${multiplier}`);
-        } else if (!metalCode && isNaN(multiplier)) {
-          // Empty row, might indicate end of table
-          console.log(`📊 Hit empty row, stopping extraction at row ${i}`);
-          break;
-        }
-      }
-      
-      console.log(`📊 Extracted ${weightTable.size} weight index entries`);
-    } else {
-      console.warn('Weight Index column not found');
-      console.log(`🔍 Available headers for debugging:`, headers.map((h, i) => `${i}: "${h}"`));
-    }
-    
-    // Metal Price table (look for next table)
-    let priceTableStart = tableStartRow + 10;
-    for (let i = tableStartRow + 5; i < ruleRows.length; i++) {
+    // Extract weight index data: metal codes from Weight Index column, multipliers from next column
+    for (let i = tableStartRow; i < ruleRows.length; i++) {
       const row = ruleRows[i];
-      const firstCell = trimAll(row[headers[0]] || '');
-      const secondCell = trimAll(row[headers[2] || headers[1]] || '');
-      if (firstCell && secondCell && !isNaN(toNum(secondCell))) {
-        priceTableStart = i;
+      const rowValues = Object.values(row);
+      
+      console.log(`📊 Row ${i} values:`, rowValues.slice(weightIndexColIndex, weightIndexColIndex + 2));
+      
+      // Get metal code from Weight Index column
+      const metalCode = trimAll(rowValues[weightIndexColIndex] || '');
+      // Get multiplier from next column
+      const multiplier = toNum(rowValues[weightIndexColIndex + 1] || '');
+      
+      console.log(`📊 Processing: metal='${metalCode}', multiplier=${multiplier}`);
+      
+      if (metalCode && !isNaN(multiplier)) {
+        weightTable.set(metalCode, multiplier);
+        console.log(`📊 Weight Index: ${metalCode} → ${multiplier}`);
+      } else if (!metalCode && isNaN(multiplier)) {
+        // Empty row, might indicate end of table
+        console.log(`📊 Hit empty row, stopping extraction at row ${i}`);
         break;
       }
     }
     
-    const priceTable = extractLookupTable(
-      ruleRows, 
-      priceTableStart, 
-      headers[0] || 'Metal',
-      headers[2] || 'Price'
-    );
-
-    // Copy extracted tables
-    weightTable.forEach((value, key) => weightIndex.set(key, value));
-    priceTable.forEach((value, key) => metalPrice.set(key, value));
-
-    // Labor and margins tables (approximate positions)
-    const laborTable = extractLaborTable(ruleRows, tableStartRow + 20);
-    const marginTable = extractMarginTable(ruleRows, tableStartRow + 30);
-    
-    laborTable.forEach((value, key) => labor.set(key, value));
-    margins.push(...marginTable);
+    console.log(`📊 Extracted ${weightTable.size} weight index entries`);
+  } else {
+    console.warn('Weight Index column not found');
+    console.log(`🔍 Available headers for debugging:`, headers.map((h, i) => `${i}: "${h}"`));
   }
+  
+  // Metal Price table (look for next table)
+  let priceTableStart = tableStartRow + 10;
+  for (let i = tableStartRow + 5; i < ruleRows.length; i++) {
+    const row = ruleRows[i];
+    const firstCell = trimAll(row[headers[0]] || '');
+    const secondCell = trimAll(row[headers[2] || headers[1]] || '');
+    if (firstCell && secondCell && !isNaN(toNum(secondCell))) {
+      priceTableStart = i;
+      break;
+    }
+  }
+  
+  const priceTable = extractLookupTable(
+    ruleRows, 
+    priceTableStart, 
+    headers[0] || 'Metal',
+    headers[2] || 'Price'
+  );
+
+  // Copy extracted tables
+  weightTable.forEach((value, key) => weightIndex.set(key, value));
+  priceTable.forEach((value, key) => metalPrice.set(key, value));
+
+  // Labor and margins tables (approximate positions)
+  const laborTable = extractLaborTable(ruleRows, tableStartRow + 20);
+  const marginTable = extractMarginTable(ruleRows, tableStartRow + 30);
+  
+  laborTable.forEach((value, key) => labor.set(key, value));
+  margins.push(...marginTable);
 
   return {
     metalsG: uniqueMetalsG,
