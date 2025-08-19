@@ -218,6 +218,9 @@ export function extractRuleSets(ruleRows: Record<string, string>[]): RuleSet {
   const uniqueMetalsJ = [...new Set(metalsJ)].filter(m => m.length > 0);
   const uniqueQualitiesK = [...new Set(qualitiesK)].filter(q => q.length > 0);
 
+  console.log(`🔍 All headers found:`, headers);
+  console.log(`🔍 Total rows in file: ${ruleRows.length}`);
+
   // Find where lookup tables start by looking for Weight Index header specifically
   let tableStartRow = 0;
   for (let i = 0; i < ruleRows.length; i++) {
@@ -232,6 +235,7 @@ export function extractRuleSets(ruleRows: Record<string, string>[]): RuleSet {
     if (hasWeightIndex) {
       tableStartRow = i + 1; // Start from the row after the header
       console.log(`📊 Found Weight Index table starting at row ${tableStartRow}`);
+      console.log(`📊 Weight Index header row:`, rowValues);
       break;
     }
     
@@ -241,9 +245,12 @@ export function extractRuleSets(ruleRows: Record<string, string>[]): RuleSet {
         (trimAll(rowValues[1] || '').toLowerCase().includes('weight') || 
          trimAll(rowValues[1] || '').toLowerCase().includes('price'))) {
       tableStartRow = i;
+      console.log(`📊 Found fallback table starting at row ${tableStartRow}`);
       break;
     }
   }
+
+  console.log(`📊 Final tableStartRow: ${tableStartRow}`);
 
   // Extract lookup tables dynamically
   const weightIndex = new Map<string, number>();
@@ -255,26 +262,34 @@ export function extractRuleSets(ruleRows: Record<string, string>[]): RuleSet {
   if (tableStartRow > 0) {
     // Find Weight Index column by searching for "Weight Index" header
     const weightIndexColIndex = findColumnIndex(headers, 'Weight Index');
+    console.log(`🔍 Searching for 'Weight Index' in headers, found at index: ${weightIndexColIndex}`);
+    
     let weightTable = new Map<string, number>();
     
     if (weightIndexColIndex >= 0) {
       console.log(`📊 Found Weight Index column at index ${weightIndexColIndex} (${headers[weightIndexColIndex]})`);
+      console.log(`📊 Will use next column at index ${weightIndexColIndex + 1} for multipliers`);
       
       // Extract weight index data: metal codes from Weight Index column, multipliers from next column
       for (let i = tableStartRow; i < ruleRows.length; i++) {
         const row = ruleRows[i];
         const rowValues = Object.values(row);
         
+        console.log(`📊 Row ${i} values:`, rowValues.slice(weightIndexColIndex, weightIndexColIndex + 2));
+        
         // Get metal code from Weight Index column
         const metalCode = trimAll(rowValues[weightIndexColIndex] || '');
         // Get multiplier from next column
         const multiplier = toNum(rowValues[weightIndexColIndex + 1] || '');
+        
+        console.log(`📊 Processing: metal='${metalCode}', multiplier=${multiplier}`);
         
         if (metalCode && !isNaN(multiplier)) {
           weightTable.set(metalCode, multiplier);
           console.log(`📊 Weight Index: ${metalCode} → ${multiplier}`);
         } else if (!metalCode && isNaN(multiplier)) {
           // Empty row, might indicate end of table
+          console.log(`📊 Hit empty row, stopping extraction at row ${i}`);
           break;
         }
       }
@@ -282,6 +297,7 @@ export function extractRuleSets(ruleRows: Record<string, string>[]): RuleSet {
       console.log(`📊 Extracted ${weightTable.size} weight index entries`);
     } else {
       console.warn('Weight Index column not found');
+      console.log(`🔍 Available headers for debugging:`, headers.map((h, i) => `${i}: "${h}"`));
     }
     
     // Metal Price table (look for next table)
