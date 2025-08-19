@@ -171,6 +171,15 @@ export function extractRuleSets(ruleRows: Record<string, string>[]): RuleSet {
     const row = ruleRows[i];
     const rowValues = Object.values(row);
 
+    // Debug: Log when we're about to process G×H×I combinations 
+    const metalsCell = colG < rowValues.length ? trimAll(rowValues[colG]) : '';
+    const sizesCell = colH < rowValues.length ? trimAll(rowValues[colH]) : '';
+    const qualityCell = colI < rowValues.length ? trimAll(rowValues[colI]) : '';
+    
+    if (metalsCell || sizesCell || qualityCell) {
+      console.log(`📊 Row ${i}: G="${metalsCell}" H="${sizesCell}" I="${qualityCell}"`);
+    }
+
     // Stop processing if we hit lookup tables (look for clear table headers)
     const firstCell = trimAll(rowValues[0] || "");
     if (
@@ -182,6 +191,7 @@ export function extractRuleSets(ruleRows: Record<string, string>[]): RuleSet {
           .toLowerCase()
           .includes("price"))
     ) {
+      console.log(`🛑 Stopping at row ${i}: detected table header "${firstCell}" | "${trimAll(rowValues[1] || "")}"`);
       break; // We've hit the lookup tables section
     }
 
