@@ -443,8 +443,8 @@ export function generateShopifyRowsWithCosts(
         Handle: handle,
         
         // Parent-only fields (blank for children) - Following exact spec order
-        Title: productInfo.title,
-        'Body (HTML)': productInfo.bodyHTML,
+        Title: isParent ? productInfo.title : '',
+        'Body (HTML)': isParent ? productInfo.bodyHTML : '',
         Vendor: isParent ? productInfo.vendor : '',
         Type: isParent ? productInfo.type : '',
         Tags: isParent ? productInfo.tags : '',
@@ -520,8 +520,8 @@ export function generateShopifyRowsWithCosts(
         Additional: `$${toFixed2(costBreakdown.additionalCost)}`,
         
         // Duplicate fields per spec
-        'Title (duplicate)': productInfo.title,
-        'Description (duplicate)': productInfo.bodyHTML,
+        'Title (duplicate)': isParent ? productInfo.title : '',
+        'Description (duplicate)': isParent ? productInfo.bodyHTML : '',
         
         // Cost breakdown for analysis
         costBreakdown
