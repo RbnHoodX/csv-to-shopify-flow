@@ -45,12 +45,22 @@ export const GenerationLog: React.FC = () => {
   const { logs, clearLogs } = useCSVStore();
 
   return (
-    <Card className="h-full">
-      <CardHeader className="pb-3">
+    <Card className="h-full border-2 hover:shadow-lg transition-all duration-200">
+      <CardHeader className="pb-4 bg-gradient-to-r from-green-50 to-emerald-50 border-b">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">Generation Log</CardTitle>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-green-500/10 rounded-lg flex items-center justify-center">
+              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <CardTitle className="text-lg text-green-800">Generation Log</CardTitle>
+              <p className="text-sm text-green-600">Real-time processing updates</p>
+            </div>
+          </div>
           {logs.length > 0 && (
-            <Button variant="outline" size="sm" onClick={clearLogs}>
+            <Button variant="outline" size="sm" onClick={clearLogs} className="hover:bg-red-50 hover:border-red-200 hover:text-red-600">
               <Trash2 className="h-4 w-4 mr-1" />
               Clear
             </Button>
@@ -61,31 +71,35 @@ export const GenerationLog: React.FC = () => {
       <CardContent className="p-0">
         <ScrollArea className="h-96 px-6 pb-4">
           {logs.length === 0 ? (
-            <div className="text-center text-muted-foreground py-8">
-              <Info className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p>No logs yet</p>
-              <p className="text-sm">Upload files to see activity</p>
+            <div className="text-center text-muted-foreground py-12">
+              <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Info className="h-8 w-8 opacity-50" />
+              </div>
+              <p className="font-medium mb-1">No logs yet</p>
+              <p className="text-sm">Upload files to see real-time processing updates</p>
             </div>
           ) : (
-            <div className="space-y-2">
-              {logs.map((log) => (
-                <div
-                  key={log.id}
-                  className="flex items-start gap-3 p-3 rounded-lg border bg-card/50"
-                >
-                  <LogIcon level={log.level} />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <LogBadge level={log.level} />
-                      <span className="text-xs text-muted-foreground">
-                        {log.timestamp.toLocaleTimeString()}
-                      </span>
+                          <div className="space-y-3">
+                {logs.map((log) => (
+                  <div
+                    key={log.id}
+                    className="flex items-start gap-4 p-4 rounded-xl border bg-card/50 hover:bg-card/80 transition-colors group"
+                  >
+                    <div className="flex-shrink-0">
+                      <LogIcon level={log.level} />
                     </div>
-                    <p className="text-sm break-words">{log.message}</p>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 mb-2">
+                        <LogBadge level={log.level} />
+                        <span className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-full">
+                          {log.timestamp.toLocaleTimeString()}
+                        </span>
+                      </div>
+                      <p className="text-sm break-words leading-relaxed">{log.message}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
           )}
         </ScrollArea>
       </CardContent>
