@@ -287,8 +287,8 @@ function joinShapes(shapes: string[]): string {
  */
 function bodyTypeQualifier(type: 'lab' | 'natural' | 'no-stones'): string {
   switch (type) {
-    case 'lab': return 'lab grown diamonds';
-    case 'natural': return 'natural diamonds';
+    case 'lab': return 'Lab-grown';
+    case 'natural': return 'Natural';
     case 'no-stones': return '';
     default: return '';
   }
