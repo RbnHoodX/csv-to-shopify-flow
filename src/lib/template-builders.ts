@@ -207,33 +207,53 @@ export function buildTitle(product: Product): string {
 }
 
 /**
- * Build body content (parent-level only)
+ * Build body content (parent-level only) - HTML format
  */
 export function buildBody(product: Product): string {
   const { variants, diamondType, hasCenter, isRepeating } = product;
   const title = buildTitle(product);
   
-  let body = `${title}\n\n`;
-  
   if (diamondType === 'NoStones') {
-    return body;
+    return `<div><p><strong>${title}</strong></p></div>`;
   }
+  
+  let html = '<div>';
+  
+  // Add title
+  html += `<p><strong>${title}</strong></p>`;
   
   if (hasCenter && !isRepeating) {
     // Items WITH CENTER (both Natural and Lab-Grown)
-    body += `**Center:** Select center from the options above.\n`;
+    html += `<p><strong>Center:</strong> <span>Select center from the options above</span></p>`;
     
     const sideStoneGroups = listSideStoneGroups(variants);
-    if (sideStoneGroups.length > 0) {
-      body += sideStoneGroups.join(' | ');
+    for (let i = 0; i < sideStoneGroups.length; i++) {
+      const group = sideStoneGroups[i];
+      // Extract the side stone details from the group text
+      const match = group.match(/Side Stone \d+: (\d+) (.+?) Cut (.+?) weighing (.+?) carat/);
+      if (match) {
+        const [, quantity, shape, typeQualifier, weight] = match;
+        html += `<p><strong>Side Stones ${i + 1}:</strong> <span>${quantity} ${shape.toLowerCase()} cut ${typeQualifier} weighing ${weight} carat</span></p>`;
+      }
     }
   } else if (isRepeating) {
     // Repeating-core items WITHOUT CENTER
     const coreWeights = listCoreWeightsAscending(variants);
-    body += coreWeights.join('\n');
+    for (const weightLine of coreWeights) {
+      const match = weightLine.match(/At least one (.+?) Cut (.+?) weighing (.+?) carat/);
+      if (match) {
+        const [, shape, typeQualifier, weight] = match;
+        html += `<p><strong>${weight}:</strong> <span>${shape.toLowerCase()} cut ${typeQualifier} weighing ${weight} carat</span></p>`;
+      }
+    }
   }
   
-  return body;
+  // Add marketing copy
+  html += generateMarketingCopy(product);
+  
+  html += '</div>';
+  
+  return html;
 }
 
 /**
@@ -243,11 +263,10 @@ export function buildSeo(product: Product): { title: string; description: string
   const title = buildTitle(product);
   const body = buildBody(product);
   
-  // Remove markdown and bold formatting, take first 160 chars
+  // Extract text from HTML, remove HTML tags, take first 160 chars
   const cleanBody = body
-    .replace(/\*\*/g, '')
-    .replace(/\n/g, ' ')
-    .replace(/\s+/g, ' ')
+    .replace(/<[^>]*>/g, '') // Remove all HTML tags
+    .replace(/\s+/g, ' ') // Replace multiple spaces with single space
     .trim();
   
   const description = cleanBody.length > 160 
@@ -304,4 +323,67 @@ function orderShapesWithCenterFirst(shapes: string[], hasCenter: boolean, inputR
     // For all other shapes, use alphabetical ordering
     return a.localeCompare(b);
   });
+}
+
+function generateMarketingCopy(product: Product): string {
+  const { variants, diamondType } = product;
+  const firstVariant = variants[0];
+  const inputRow = firstVariant.inputRowRef;
+  const caratRange = getCaratRange(variants);
+  const shapes = getUniqueShapesOrdered(variants);
+  const shapesStr = orderShapesWithCenterFirst(shapes, product.hasCenter, inputRow).join(' & ');
+  const subcategory = trimAll(inputRow['Subcategory'] || 'Jewelry');
+  const stoneTypes = getStoneTypesPlural(variants);
+  
+  let html = '';
+  
+  // Add marketing paragraph
+  const typeQualifier = diamondType === 'Natural' ? 'natural' : 'lab grown';
+  html += `<p><span>Experience a true luxury with our ${caratRange} ${shapesStr} Cut ${typeQualifier} ${stoneTypes} – ${subcategory}. This ${subcategory} crafted with ${caratRange} ${typeQualifier} ${stoneTypes}. Select your choice of precious metal between 14 Karat, 18 Karat Yellow, White and Rose Gold OR Platinum. Shine with uniqueness with Primestyle diamond ${subcategory}.</span></p>`;
+  
+  // Add bullet points
+  html += '<ul>';
+  
+  // Bullet point 1: Captivating cuts
+  html += `<li>Captivating ${shapesStr} Cut: Our ${typeQualifier} ${stoneTypes}, available in ${shapesStr} cut, ranging from ${caratRange}, embody timeless beauty and brilliance.</li>`;
+  
+  // Bullet point 2: Sparkling elegance
+  if (shapes.includes('Round') && shapes.includes('Princess')) {
+    html += `<li>Sparkling Elegance: The Round cut showcases a dazzling array of facets, while the Princess cut exudes a captivating brilliance—together creating a stunning combination of elegance and radiance.</li>`;
+  } else if (shapes.includes('Round')) {
+    html += `<li>Sparkling Elegance: The Round cut showcases a dazzling array of facets, creating stunning brilliance and timeless beauty.</li>`;
+  } else if (shapes.includes('Princess')) {
+    html += `<li>Sparkling Elegance: The Princess cut exudes a captivating brilliance, creating stunning elegance and modern sophistication.</li>`;
+  } else {
+    html += `<li>Sparkling Elegance: Our ${shapesStr} cut showcases a dazzling array of facets, creating stunning brilliance and timeless beauty.</li>`;
+  }
+  
+  // Bullet point 3: Ethical & Sustainable
+  if (diamondType === 'LabGrown') {
+    html += `<li>Ethical & Sustainable: Embrace eco-conscious luxury with our lab-grown ${stoneTypes}—ethically sourced, conflict-free, and environmentally friendly.</li>`;
+  } else {
+    html += `<li>Ethical & Sustainable: Embrace luxury with our natural ${stoneTypes}—ethically sourced and conflict-free.</li>`;
+  }
+  
+  // Bullet point 4: Customizable Perfection
+  html += `<li>Customizable Perfection: Personalize your dream ${subcategory.toLowerCase()} with a range of ${stoneTypes} sizes and metal options, including 14K and 18K White Gold, Yellow Gold, Rose Gold, or Platinum.</li>`;
+  
+  // Bullet point 5: Exquisite Craftsmanship
+  html += `<li>Exquisite Craftsmanship: Each ${subcategory.toLowerCase()} is meticulously handcrafted by our skilled artisans, ensuring exceptional quality and attention to detail.</li>`;
+  
+  // Bullet point 6: Symbol of Eternal Love
+  html += `<li>Symbol of Eternal Love: The ${shapesStr} cut ${typeQualifier} ${stoneTypes} represent everlasting love, making this ${subcategory.toLowerCase()} a profound symbol of your enduring commitment.</li>`;
+  
+  // Bullet point 7: Cherish Precious Moments
+  html += `<li>Cherish Precious Moments: Celebrate life's most cherished occasions as the brilliance of our ${typeQualifier} ${stoneTypes} illuminates every moment with mesmerizing sparkle.</li>`;
+  
+  // Bullet point 8: Celebrate Your Love Story
+  html += `<li>Celebrate Your Love Story: Our ${caratRange} ${shapesStr} Cut ${typeQualifier} ${stoneTypes} ${subcategory.toLowerCase()} celebrates the uniqueness of your love story and the promise of a lifetime together.</li>`;
+  
+  // Bullet point 9: Timeless Elegance
+  html += `<li>Timeless Elegance: This exquisite ${subcategory.toLowerCase()} captures timeless elegance, symbolizing the eternal beauty of your love for generations to come.</li>`;
+  
+  html += '</ul>';
+  
+  return html;
 }

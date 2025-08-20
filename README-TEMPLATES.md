@@ -37,32 +37,47 @@ export const BODY_TYPE_QUALIFIER = {
 
 **Example:** `Wedding Band - in 14K, 18K, and 950`
 
-## Body Templates (Parent-Level Only)
+## Body Templates (Parent-Level Only) - HTML Format
 
 ### Items WITH CENTER (both Natural and Lab-Grown)
 
-```
-0.50-1.25 ct - Round & Princess Cut diamonds - Engagement Rings
-
-**Center:** Select center from the options above.
-Side Stone 1: 6 Round Cut lab grown diamonds weighing 0.25 carat | Side Stone 2: 4 Princess Cut lab grown diamonds weighing 0.15 carat
+```html
+<div>
+  <p><strong>0.50-1.25 ct - Round & Princess Cut diamonds - Engagement Rings</strong></p>
+  <p><strong>Center:</strong> <span>Select center from the options above</span></p>
+  <p><strong>Side Stones 1:</strong> <span>6 round cut lab grown diamonds weighing 0.25 carat</span></p>
+  <p><strong>Side Stones 2:</strong> <span>4 princess cut lab grown diamonds weighing 0.15 carat</span></p>
+  
+  <p><span>Experience a true luxury with our 0.50-1.25 ct Round & Princess Cut lab grown diamonds – Engagement Rings...</span></p>
+  
+  <ul>
+    <li>Captivating Round & Princess Cut: Our lab grown diamonds, available in Round & Princess cut, ranging from 0.50-1.25 ct, embody timeless beauty and brilliance.</li>
+    <li>Sparkling Elegance: The Round cut showcases a dazzling array of facets, while the Princess cut exudes a captivating brilliance—together creating a stunning combination of elegance and radiance.</li>
+    <li>Ethical & Sustainable: Embrace eco-conscious luxury with our lab-grown diamonds—ethically sourced, conflict-free, and environmentally friendly.</li>
+    <!-- Additional marketing bullet points -->
+  </ul>
+</div>
 ```
 
 ### Repeating-Core Items WITHOUT CENTER
 
-```
-0.35-0.80 ct - Round Cut Natural diamonds - Pendant
-
-At least one Round Cut natural diamonds weighing 0.35 carat.
-At least one Round Cut natural diamonds weighing 0.45 carat.
-At least one Round Cut natural diamonds weighing 0.55 carat.
+```html
+<div>
+  <p><strong>0.35-0.80 ct - Round Cut Natural diamonds - Pendant</strong></p>
+  <p><strong>0.35 carat:</strong> <span>round cut natural diamonds weighing 0.35 carat</span></p>
+  <p><strong>0.45 carat:</strong> <span>round cut natural diamonds weighing 0.45 carat</span></p>
+  <p><strong>0.55 carat:</strong> <span>round cut natural diamonds weighing 0.55 carat</span></p>
+  
+  <!-- Marketing copy and bullet points -->
+</div>
 ```
 
 ### NO-STONES Items
 
-```
-2.0 MM - Wedding Band - in 14K, 18K, and 950
-
+```html
+<div>
+  <p><strong>2.0 MM - Wedding Band - in 14K, 18K, and 950</strong></p>
+</div>
 ```
 
 ## Key Features
@@ -96,7 +111,7 @@ At least one Round Cut natural diamonds weighing 0.55 carat.
 
 ### SEO Description  
 - **First 160 characters** of Body content
-- **Remove markdown/bold** formatting
+- **Remove HTML tags** and extract plain text
 - **Preserve "natural/lab grown"** wording
 - **Add "..."** if truncated
 
