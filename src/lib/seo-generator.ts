@@ -76,15 +76,7 @@ export function generateSEOData(
   seoDescription: string;
   googleMPN: string;
 } {
-  // SEO fields are parent-only
-  if (!isParent) {
-    return {
-      seoTitle: '',
-      seoDescription: '',
-      googleMPN: sku  // MPN should be on all variants
-    };
-  }
-
+  // Generate SEO data for all rows
   return {
     seoTitle: generateSEOTitle(variant, totalCarats, sku),
     seoDescription: generateSEODescription(variant, totalCarats, sku),
