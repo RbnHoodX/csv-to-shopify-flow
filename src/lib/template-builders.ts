@@ -118,174 +118,11 @@ export function hasCenter(variants: VariantSeed[]): boolean {
   });
 }
 
-/**
- * List side stone groups separately
- */
-export function listSideStoneGroups(variants: VariantSeed[]): string[] {
-  const firstVariant = variants[0];
-  const inputRow = firstVariant.inputRowRef;
-  const groups: string[] = [];
-  
-  for (let i = 1; i <= 10; i++) {
-    const sideCt = toNum(inputRow[`Side ${i} Ct`] || '0');
-    const sideShape = trimAll(inputRow[`Side ${i} shape`] || '');
-    const sideType = trimAll(inputRow[`Side ${i} Type`] || '');
-    const sideStones = toNum(inputRow[`Side ${i} Stones`] || '0');
-    
-    if (sideCt > 0 && sideShape && sideType) {
-      const typeQualifier = getTypeQualifier(firstVariant.inputRowRef.diamondsType || '');
-      const stoneTypePlural = pluralizeStoneType(sideType);
-      const group = `Side Stone ${i}: ${sideStones} ${capitalizeFirst(sideShape)} Cut ${typeQualifier} ${stoneTypePlural} weighing ${toFixed2(sideCt)} carat`;
-      groups.push(group);
-    }
-  }
-  
-  return groups;
-}
 
-/**
- * List core weights in ascending order for repeating items
- */
-export function listCoreWeightsAscending(variants: VariantSeed[]): string[] {
-  const coreWeights = new Set<number>();
-  
-  for (const variant of variants) {
-    const totalCt = toNum(variant.inputRowRef['Total Ct Weight'] || '0');
-    if (totalCt > 0) {
-      coreWeights.add(totalCt);
-    }
-  }
-  
-  return Array.from(coreWeights)
-    .sort((a, b) => a - b)
-    .map(weight => {
-      const firstVariant = variants[0];
-      const inputRow = firstVariant.inputRowRef;
-      const shape = trimAll(inputRow['Center shape'] || inputRow['Shape'] || '');
-      const typeQualifier = getTypeQualifier(inputRow.diamondsType || '');
-      const stoneType = trimAll(inputRow['Center Type'] || 'diamond');
-      const stoneTypePlural = pluralizeStoneType(stoneType);
-      
-      return `At least one ${capitalizeFirst(shape)} Cut ${typeQualifier} ${stoneTypePlural} weighing ${toFixed2(weight)} carat.`;
-    });
-}
 
-/**
- * Build title based on product type
- */
-export function buildTitle(product: Product): string {
-  const { variants, diamondType, hasCenter } = product;
-  const firstVariant = variants[0];
-  const inputRow = firstVariant.inputRowRef;
-  
-  if (diamondType === 'NoStones') {
-    const width = toNum(inputRow['Unique Charcteristic/ Width for plain wedding bands'] || '0');
-    const subcategory = trimAll(inputRow['Subcategory'] || 'Jewelry');
-    
-    if (width > 0) {
-      return `${width.toFixed(1)} MM - ${subcategory} - ${FIXED_METALS_STRING}`;
-    } else {
-      return `${subcategory} - ${FIXED_METALS_STRING}`;
-    }
-  }
-  
-  const caratRange = getCaratRange(variants);
-  const shapes = getUniqueShapesOrdered(variants);
-  const stoneTypes = getStoneTypesPlural(variants);
-  const subcategory = trimAll(inputRow['Subcategory'] || 'Jewelry');
-  
-  // Order shapes: center shape first if present, then remaining shapes A→Z
-  const orderedShapes = orderShapesWithCenterFirst(shapes, hasCenter, inputRow);
-  const shapesStr = orderedShapes.join(' & ');
-  
-  if (diamondType === 'Natural') {
-    return `${caratRange} - ${shapesStr} Cut Natural ${stoneTypes} - ${subcategory}`;
-  } else {
-    // Lab-Grown: no prefix
-    return `${caratRange} - ${shapesStr} Cut ${stoneTypes} - ${subcategory}`;
-  }
-}
 
-/**
- * Build body content (parent-level only) - HTML format
- */
-export function buildBody(product: Product): string {
-  const { variants, diamondType, hasCenter, isRepeating } = product;
-  const title = buildTitle(product);
-  
-  if (diamondType === 'NoStones') {
-    // Special handling for no-stone items - match the exact sample format
-    const { variants } = product;
-    const inputRow = variants[0]?.inputRowRef;
-    const width = inputRow?.['Unique Characteristics (width mm)'] || inputRow?.['Unique Charcteristic/ Width for plain wedding bands'];
-    const subcategory = inputRow?.['Subcategory'] || 'Plain Wedding Bands';
-    
-    let html = '<div>';
-    
-    // Add title
-    html += `<p><strong>${title}</strong></p>`;
-    
-    // Add main marketing paragraph (similar to diamond items but adapted for no-stones)
-    html += `<p>Experience true luxury with our ${title}. This ${subcategory.toLowerCase()} is expertly crafted with precision and attention to detail. Select your choice of precious metal between 14 Karat, 18 Karat Yellow, White and Rose Gold, or Platinum. At Primestyle.com, we deal ONLY with 100% real, natural, and conflict-free diamonds. Our diamonds are NOT enhanced nor treated. Shine with uniqueness with Primestyle diamond ${subcategory.toLowerCase()}.</p>`;
-    
-    // Add subcategory section header
-    html += `<p><strong>${subcategory} - Premium Rings</strong></p>`;
-    
-    // Add craftsmanship description
-    html += `<p>Expertly crafted jewelry piece from Primestyle.com. Made with precision and attention to detail.</p>`;
-    html += `<p>Perfect for everyday wear or special occasions.</p>`;
-    
-    // Add width-specific section if width is available
-    if (width) {
-      html += `<p><strong>${width} mm ${subcategory} in 14KT, 18KT &amp; Platinum</strong></p>`;
-      html += `<p>Reward yourself with our ${width} mm ${subcategory.toLowerCase()} in 14KT, 18KT, and Platinum.</p>`;
-      html += `<p>Select your choice of precious metal between 14 Karat, 18 Karat Yellow, White and Rose Gold, or Platinum.</p>`;
-      html += `<p>At Primestyle.com, we deal ONLY with 100% real, natural, and conflict-free diamonds. Our diamonds are NOT enhanced nor treated.</p>`;
-      html += `<p>Shine with chic with Primestyle diamonds ${subcategory.toLowerCase()}.</p>`;
-    }
-    
-    html += '</div>';
-    return html;
-  }
-  
-  let html = '<div>';
-  
-  // Add title
-  html += `<p><strong>${title}</strong></p>`;
-  
-  if (hasCenter && !isRepeating) {
-    // Items WITH CENTER (both Natural and Lab-Grown)
-    html += `<p><strong>Center:</strong> <span>Select center from the options above</span></p>`;
-    
-    const sideStoneGroups = listSideStoneGroups(variants);
-    for (let i = 0; i < sideStoneGroups.length; i++) {
-      const group = sideStoneGroups[i];
-      // Extract the side stone details from the group text
-      const match = group.match(/Side Stone \d+: (\d+) (.+?) Cut (.+?) weighing (.+?) carat/);
-      if (match) {
-        const [, quantity, shape, typeQualifier, weight] = match;
-        html += `<p><strong>Side Stones ${i + 1}:</strong> <span>${quantity} ${shape.toLowerCase()} cut ${typeQualifier} weighing ${weight} carat</span></p>`;
-      }
-    }
-  } else if (isRepeating) {
-    // Repeating-core items WITHOUT CENTER
-    const coreWeights = listCoreWeightsAscending(variants);
-    for (const weightLine of coreWeights) {
-      const match = weightLine.match(/At least one (.+?) Cut (.+?) weighing (.+?) carat/);
-      if (match) {
-        const [, shape, typeQualifier, weight] = match;
-        html += `<p><strong>${weight}:</strong> <span>${shape.toLowerCase()} cut ${typeQualifier} weighing ${weight} carat</span></p>`;
-      }
-    }
-  }
-  
-  // Add marketing copy
-  html += generateMarketingCopy(product);
-  
-  html += '</div>';
-  
-  return html;
-}
+
+
 
 /**
  * Build SEO title (same as title)
@@ -427,22 +264,234 @@ function formatCt(n: number): string {
 }
 
 /**
- * Helper function to join shapes with " & " separator
+ * Helper function to format carat range with uppercase CT
  */
-function joinShapes(shapes: string[]): string {
-  return shapes.join(' & ');
+function formatCtRange(minCt: number, maxCt: number): string {
+  if (minCt === maxCt) {
+    return `${formatCt(minCt)} CT`;
+  }
+  return `${formatCt(minCt)}–${formatCt(maxCt)} CT`;
 }
 
 /**
- * Helper function to get stone type qualifier
+ * Helper function to join shapes with " & " separator and title-case
  */
-function qualifier(type: 'lab' | 'natural' | 'no-stones'): string {
+function joinShapes(shapes: string[]): string {
+  return shapes.map(shape => 
+    shape.charAt(0).toUpperCase() + shape.slice(1).toLowerCase()
+  ).join(' & ');
+}
+
+/**
+ * Helper function to get stone type qualifier for body text
+ */
+function bodyTypeQualifier(type: 'lab' | 'natural' | 'no-stones'): string {
   switch (type) {
-    case 'lab': return 'lab grown';
-    case 'natural': return 'natural';
+    case 'lab': return 'lab grown diamonds';
+    case 'natural': return 'natural diamonds';
     case 'no-stones': return '';
     default: return '';
   }
+}
+
+/**
+ * Build title for parent row following new capitalization rules
+ */
+export function buildTitle(product: Product): string {
+  const { diamondType, variants } = product;
+  const firstVariant = variants[0];
+  const inputRow = firstVariant.inputRowRef;
+  
+  if (diamondType === 'NoStones') {
+    const width = toNum(inputRow['Unique Charcteristic/ Width for plain wedding bands'] || '0');
+    const subcategory = trimAll(inputRow['Subcategory'] || 'Jewelry');
+    
+    if (width > 0) {
+      return `${width.toFixed(1)} mm - ${subcategory} - in 14KT, 18KT & Platinum`;
+    } else {
+      return `${subcategory} - in 14KT, 18KT & Platinum`;
+    }
+  }
+  
+  // Get carat range for parent
+  const caratWeights = variants.map(calculateTotalCaratWeight);
+  const minCt = Math.min(...caratWeights);
+  const maxCt = Math.max(...caratWeights);
+  const caratRange = formatCtRange(minCt, maxCt);
+  
+  // Get shapes and format with title-case
+  const shapes = getUniqueShapesOrdered(variants);
+  const shapesStr = joinShapes(shapes);
+  
+  // Get subcategory
+  const subcategory = trimAll(inputRow['Subcategory'] || 'Jewelry');
+  
+  // Build title following new rules
+  if (diamondType === 'Natural') {
+    // NATURAL: include "Natural Diamonds"
+    return `${caratRange} ${shapesStr} Cut Natural Diamonds - ${subcategory}`;
+  } else {
+    // LAB-GROWN: DO NOT include "Lab-Grown" in Title
+    return `${caratRange} ${shapesStr} Cut Diamonds - ${subcategory}`;
+  }
+}
+
+/**
+ * Build HTML body for parent row with proper structure
+ */
+export function buildBody(product: Product): string {
+  const { diamondType, variants, hasCenter } = product;
+  const firstVariant = variants[0];
+  const inputRow = firstVariant.inputRowRef;
+  
+  if (diamondType === 'NoStones') {
+    const width = toNum(inputRow['Unique Charcteristic/ Width for plain wedding bands'] || '0');
+    const subcategory = trimAll(inputRow['Subcategory'] || 'Jewelry');
+    
+    if (width > 0) {
+      return `<div><p><strong>${width.toFixed(1)} mm - ${subcategory} - in 14KT, 18KT & Platinum</strong></p><p>Expertly crafted jewelry piece from Primestyle.com. Made with precision and attention to detail.</p><p>Perfect for everyday wear or special occasions.</p><p><strong>${width.toFixed(1)} mm ${subcategory} in 14KT, 18KT, and Platinum</strong></p><p>Reward yourself with our ${width.toFixed(1)} mm ${subcategory.toLowerCase()} in 14KT, 18KT, and Platinum.</p><p>Select your choice of precious metal between 14 Karat, 18 Karat Yellow, White and Rose Gold, or Platinum.</p><p>At Primestyle.com, we deal ONLY with 100% real, natural, and conflict-free diamonds. Our diamonds are NOT enhanced nor treated.</p><p>Shine with chic with Primestyle diamonds ${subcategory.toLowerCase()}.</p></div>`;
+    } else {
+      return `<div><p><strong>${subcategory} - in 14KT, 18KT & Platinum</strong></p><p>Expertly crafted jewelry piece from Primestyle.com. Made with precision and attention to detail.</p><p>Select your choice of precious metal between 14 Karat, 18 Karat Yellow, White and Rose Gold, or Platinum.</p><p>At Primestyle.com, we deal ONLY with 100% real, natural, and conflict-free diamonds. Our diamonds are NOT enhanced nor treated.</p><p>Perfect for everyday wear or special occasions.</p></div>`;
+    }
+  }
+  
+  // Get title for first line
+  const title = buildTitle(product);
+  
+  // Get type qualifier for body text
+  const typeQualifier = bodyTypeQualifier(diamondType === 'Natural' ? 'natural' : 'lab');
+  
+  let body = `<div><p><strong>${title}</strong></p><p>`;
+  
+  if (hasCenter) {
+    // HAS CENTER: Center line + side stone lines
+    body += `<strong>Center:</strong> Select center from the options above<br>`;
+    
+    // List side stones as separate lines in same paragraph
+    const sideStoneGroups = listSideStoneGroups(variants);
+    sideStoneGroups.forEach((group, index) => {
+      body += `<strong>Side Stones ${index + 1}:</strong> ${group}<br>`;
+    });
+  } else {
+    // REPEATING-CORE TYPE: List all core weights ascending
+    const coreWeights = listCoreWeightsAscending(variants);
+    coreWeights.forEach((core, index) => {
+      const shapes = getUniqueShapesOrdered([core.variant]);
+      const shapesStr = joinShapes(shapes);
+      body += `At least one ${shapesStr} Cut ${typeQualifier} weighing ${formatCt(core.totalCt)} carat.<br>`;
+    });
+  }
+  
+  body += `</p></div>`;
+  return body;
+}
+
+/**
+ * List side stone groups for variants with center stones
+ */
+function listSideStoneGroups(variants: VariantSeed[]): string[] {
+  const groups: string[] = [];
+  const firstVariant = variants[0];
+  const inputRow = firstVariant.inputRowRef;
+  
+  // Check each side stone column
+  for (let i = 1; i <= 10; i++) {
+    const sideCt = toNum(inputRow[`Side ${i} Ct`] || '0');
+    const sideShape = trimAll(inputRow[`Side ${i} shape`] || inputRow[`Side ${i} Shape`] || '');
+    const sideType = trimAll(inputRow[`Side ${i} Type`] || inputRow[`Side ${i} type`] || 'diamond');
+    
+    if (sideCt > 0 && sideShape) {
+      const shapeStr = sideShape.charAt(0).toUpperCase() + sideShape.slice(1).toLowerCase();
+      const typeStr = sideType.charAt(0).toUpperCase() + sideType.slice(1).toLowerCase();
+      groups.push(`${sideCt} ${shapeStr} Cut ${typeStr} weighing ${formatCt(sideCt)} carat`);
+    }
+  }
+  
+  return groups;
+}
+
+/**
+ * List core weights in ascending order for repeating-core items
+ */
+function listCoreWeightsAscending(variants: VariantSeed[]): Array<{variant: VariantSeed, totalCt: number}> {
+  return variants
+    .map(variant => ({
+      variant,
+      totalCt: calculateTotalCaratWeight(variant)
+    }))
+    .sort((a, b) => a.totalCt - b.totalCt);
+}
+
+/**
+ * Generate TCW bucket tags from min and max total carat weights
+ */
+function generateTCWBucketTags(minTCW: number, maxTCW: number): string[] {
+  const tags: string[] = [];
+  const startBucket = Math.floor(minTCW);
+  const endBucket = Math.ceil(maxTCW);
+  
+  for (let bucket = startBucket; bucket < endBucket; bucket++) {
+    const nextBucket = bucket + 1;
+    tags.push(`tcw_${bucket.toFixed(2)} CT - ${nextBucket.toFixed(2)} CT`);
+  }
+  
+  return tags;
+}
+
+/**
+ * Build tags following new rules
+ */
+export function buildTags(product: Product): string {
+  const { diamondType, variants } = product;
+  const firstVariant = variants[0];
+  const inputRow = firstVariant.inputRowRef;
+  
+  if (diamondType === 'NoStones') {
+    // NO-STONES: width tag only, no shape or diamond tags
+    const width = toNum(inputRow['Unique Charcteristic/ Width for plain wedding bands'] || '0');
+    if (width > 0) {
+      return `WIDTH_${width.toFixed(1)}`;
+    }
+    return '';
+  }
+  
+  // Diamonds items: keep existing tag logic
+  const tagParts: string[] = [];
+  
+  // Add category_subcategory as single tag
+  const category = trimAll(inputRow['Category'] || 'Jewelry');
+  const subcategory = trimAll(inputRow['Subcategory'] || 'Piece');
+  tagParts.push(`${category}_${subcategory}`);
+  
+  // Add unique shape tags in consistent order
+  const shapes = getUniqueShapesOrdered(variants);
+  shapes.forEach(shape => {
+    tagParts.push(`shape_${shape.toLowerCase()}`);
+  });
+  
+  // Always add shape_round if it's not already there
+  if (!shapes.some(shape => shape.toLowerCase() === 'round')) {
+    tagParts.push('shape_round');
+  }
+  
+  // Add TCW bucket tags
+  const caratWeights = variants.map(calculateTotalCaratWeight);
+  const minTCW = Math.min(...caratWeights);
+  const maxTCW = Math.max(...caratWeights);
+  const tcwBucketTags = generateTCWBucketTags(minTCW, maxTCW);
+  tagParts.push(...tcwBucketTags);
+  
+  // Add input tags if present (filter out shape tags)
+  const inputTags = trimAll(inputRow['Tags'] || inputRow['Keywords'] || '');
+  if (inputTags) {
+    const inputTagArray = inputTags.split(',').map(tag => tag.trim());
+    const filteredInputTags = inputTagArray.filter(tag => !tag.toLowerCase().startsWith('shape_'));
+    if (filteredInputTags.length > 0) {
+      tagParts.push(...filteredInputTags);
+    }
+  }
+  
+  return tagParts.join(', ');
 }
 
 /**
@@ -464,7 +513,7 @@ export function buildSeoTitleParent(item: {
   
   // Stones parent: "<[minCt–maxCt] CT> <Shapes> Cut <lab grown|natural> diamonds - <Subcategory> - <CoreNumber>"
   const shapesStr = joinShapes(shapes);
-  const typeQualifier = qualifier(type);
+  const typeQualifier = bodyTypeQualifier(type);
   
   let title = '';
   if (caratRange && caratRange.minCt !== caratRange.maxCt) {
@@ -495,7 +544,7 @@ export function buildSeoTitleVariant(item: {
   
   // Stones variant: "<totalCt> CT <Shapes> Cut <lab grown|natural> diamonds - <Subcategory> - <SKU>"
   const shapesStr = joinShapes(shapes);
-  const typeQualifier = qualifier(type);
+  const typeQualifier = bodyTypeQualifier(type);
   
   return `${formatCt(totalCt)} CT ${shapesStr} Cut ${typeQualifier} diamonds - ${subcategory} - ${sku}`;
 }
@@ -517,7 +566,7 @@ export function buildSeoDescriptionParent(item: {
   
   // Stones parent: brief range summary using minCt→maxCt, shapes, and type
   const shapesStr = joinShapes(shapes);
-  const typeQualifier = qualifier(type);
+  const typeQualifier = bodyTypeQualifier(type);
   
   let description = '';
   if (caratRange && caratRange.minCt !== caratRange.maxCt) {
@@ -559,7 +608,7 @@ export function buildSeoDescriptionVariant(item: {
   
   // Stones variant: based on metal, totalCt, quality, shapes, type, subcategory
   const shapesStr = joinShapes(shapes);
-  const typeQualifier = qualifier(type);
+  const typeQualifier = bodyTypeQualifier(type);
   
   const description = `${formatCt(totalCt)} carat ${shapesStr.toLowerCase()} cut ${typeQualifier} ${subcategory.toLowerCase()}. Metal: ${metal}. Quality: ${quality}. Premium ${typeQualifier} diamonds with expert craftsmanship.`;
   
@@ -595,7 +644,7 @@ export function buildImageAltVariant(item: {
   }
   
   const shapesStr = joinShapes(shapes);
-  const typeQualifier = qualifier(type);
+  const typeQualifier = bodyTypeQualifier(type);
   
   return `Alt text (<=${charLimit} chars): ${formatCt(totalCt)} CT ${shapesStr.toLowerCase()} cut ${typeQualifier} diamonds ${subcategory.toLowerCase()} in ${metal}, SKU ${sku}.`;
 }
