@@ -4,7 +4,7 @@ import type { VariantSeed } from './variant-expansion';
 // Configuration constants
 export const FIXED_METALS_STRING = "in 14K, 18K, and 950";
 export const BODY_TYPE_QUALIFIER = {
-  lab: "lab grown",
+  lab: "labgrown",
   natural: "natural"
 } as const;
 
@@ -369,7 +369,7 @@ function generateMarketingCopy(product: Product): string {
   let html = '';
   
   // Add marketing paragraph
-  const typeQualifier = diamondType === 'Natural' ? 'natural' : 'lab grown';
+  const typeQualifier = diamondType === 'Natural' ? 'natural' : 'labgrown';
   html += `<p><span>Experience a true luxury with our ${caratRange} ${shapesStr} Cut ${typeQualifier} ${stoneTypes} – ${subcategory}. This ${subcategory} crafted with ${caratRange} ${typeQualifier} ${stoneTypes}. Select your choice of precious metal between 14 Karat, 18 Karat Yellow, White and Rose Gold OR Platinum. Shine with uniqueness with Primestyle diamond ${subcategory}.</span></p>`;
   
   // Add bullet points
@@ -417,4 +417,185 @@ function generateMarketingCopy(product: Product): string {
   html += '</ul>';
   
   return html;
+}
+
+/**
+ * Helper function to format carat weight (trim trailing zeros)
+ */
+function formatCt(n: number): string {
+  return n.toFixed(2).replace(/\.?0+$/, '');
+}
+
+/**
+ * Helper function to join shapes with " & " separator
+ */
+function joinShapes(shapes: string[]): string {
+  return shapes.join(' & ');
+}
+
+/**
+ * Helper function to get stone type qualifier
+ */
+function qualifier(type: 'lab' | 'natural' | 'no-stones'): string {
+  switch (type) {
+    case 'lab': return 'lab grown';
+    case 'natural': return 'natural';
+    case 'no-stones': return '';
+    default: return '';
+  }
+}
+
+/**
+ * Build SEO Title for parent row
+ */
+export function buildSeoTitleParent(item: {
+  type: 'lab' | 'natural' | 'no-stones';
+  subcategory: string;
+  coreNumber: string;
+  shapes: string[];
+  caratRange?: { minCt: number; maxCt: number };
+}): string {
+  const { type, subcategory, coreNumber, shapes, caratRange } = item;
+  
+  if (type === 'no-stones') {
+    // No-stones parent: "<[width mm if available]> - <Subcategory> - <CoreNumber>"
+    return `${subcategory} - ${coreNumber}`;
+  }
+  
+  // Stones parent: "<[minCt–maxCt] CT> <Shapes> Cut <lab grown|natural> diamonds - <Subcategory> - <CoreNumber>"
+  const shapesStr = joinShapes(shapes);
+  const typeQualifier = qualifier(type);
+  
+  let title = '';
+  if (caratRange && caratRange.minCt !== caratRange.maxCt) {
+    title = `${formatCt(caratRange.minCt)}–${formatCt(caratRange.maxCt)} CT `;
+  }
+  title += `${shapesStr} Cut ${typeQualifier} diamonds - ${subcategory} - ${coreNumber}`;
+  
+  return title;
+}
+
+/**
+ * Build SEO Title for variant row
+ */
+export function buildSeoTitleVariant(item: {
+  type: 'lab' | 'natural' | 'no-stones';
+  subcategory: string;
+  sku: string;
+  totalCt: number;
+  shapes: string[];
+  metal?: string;
+}): string {
+  const { type, subcategory, sku, totalCt, shapes, metal } = item;
+  
+  if (type === 'no-stones') {
+    // No-stones variant: "<Subcategory> - <Metal> - <SKU>"
+    return `${subcategory} - ${metal || ''} - ${sku}`;
+  }
+  
+  // Stones variant: "<totalCt> CT <Shapes> Cut <lab grown|natural> diamonds - <Subcategory> - <SKU>"
+  const shapesStr = joinShapes(shapes);
+  const typeQualifier = qualifier(type);
+  
+  return `${formatCt(totalCt)} CT ${shapesStr} Cut ${typeQualifier} diamonds - ${subcategory} - ${sku}`;
+}
+
+/**
+ * Build SEO Description for parent row (summary format)
+ */
+export function buildSeoDescriptionParent(item: {
+  type: 'lab' | 'natural' | 'no-stones';
+  subcategory: string;
+  shapes: string[];
+  caratRange?: { minCt: number; maxCt: number };
+}, charLimit: number = 155): string {
+  const { type, subcategory, shapes, caratRange } = item;
+  
+  if (type === 'no-stones') {
+    return `Expertly crafted ${subcategory.toLowerCase()} from Primestyle.com. Premium metals with precision craftsmanship.`;
+  }
+  
+  // Stones parent: brief range summary using minCt→maxCt, shapes, and type
+  const shapesStr = joinShapes(shapes);
+  const typeQualifier = qualifier(type);
+  
+  let description = '';
+  if (caratRange && caratRange.minCt !== caratRange.maxCt) {
+    description = `${formatCt(caratRange.minCt)} to ${formatCt(caratRange.maxCt)} carat `;
+  }
+  description += `${shapesStr.toLowerCase()} cut ${typeQualifier} diamond ${subcategory.toLowerCase()}. Premium quality with expert craftsmanship.`;
+  
+  // Ensure within character limit
+  if (description.length > charLimit) {
+    description = description.substring(0, charLimit - 3) + '...';
+  }
+  
+  return description;
+}
+
+/**
+ * Build SEO Description for variant row (LLM-ready format)
+ */
+export function buildSeoDescriptionVariant(item: {
+  type: 'lab' | 'natural' | 'no-stones';
+  subcategory: string;
+  totalCt: number;
+  shapes: string[];
+  metal: string;
+  quality: string;
+}, charLimit: number = 155): {
+  seoDescription: string;
+  seoDescriptionPrompt: string;
+} {
+  const { type, subcategory, totalCt, shapes, metal, quality } = item;
+  
+  if (type === 'no-stones') {
+    const description = `${formatCt(totalCt)}mm ${subcategory.toLowerCase()} in ${metal}. Expertly crafted jewelry with premium metals. Perfect for everyday wear.`;
+    return {
+      seoDescription: description,
+      seoDescriptionPrompt: `Write a concise SEO meta description (<= ${charLimit} chars) for a ${subcategory}. Include: ${formatCt(totalCt)}mm width, ${metal} metal. Tone: elegant, factual, no fluff, no SKU, no price, sentence case.`
+    };
+  }
+  
+  // Stones variant: based on metal, totalCt, quality, shapes, type, subcategory
+  const shapesStr = joinShapes(shapes);
+  const typeQualifier = qualifier(type);
+  
+  const description = `${formatCt(totalCt)} carat ${shapesStr.toLowerCase()} cut ${typeQualifier} ${subcategory.toLowerCase()}. Metal: ${metal}. Quality: ${quality}. Premium ${typeQualifier} diamonds with expert craftsmanship.`;
+  
+  // Ensure within character limit
+  let finalDescription = description;
+  if (finalDescription.length > charLimit) {
+    finalDescription = finalDescription.substring(0, charLimit - 3) + '...';
+  }
+  
+  const prompt = `Write a concise SEO meta description (<= ${charLimit} chars) for a ${subcategory}. Include: ${formatCt(totalCt)} CT, ${shapesStr} cut, ${typeQualifier} diamonds, ${quality}, ${metal}. Tone: elegant, factual, no fluff, no SKU, no price, sentence case.`;
+  
+  return {
+    seoDescription: finalDescription,
+    seoDescriptionPrompt: prompt
+  };
+}
+
+/**
+ * Build Image Alt text prompt for variant (scaffold only)
+ */
+export function buildImageAltVariant(item: {
+  type: 'lab' | 'natural' | 'no-stones';
+  subcategory: string;
+  totalCt: number;
+  shapes: string[];
+  metal: string;
+  sku: string;
+}, charLimit: number = 120): string {
+  const { type, subcategory, totalCt, shapes, metal, sku } = item;
+  
+  if (type === 'no-stones') {
+    return `Alt text (<=${charLimit} chars): ${formatCt(totalCt)}mm ${subcategory.toLowerCase()} in ${metal}, SKU ${sku}.`;
+  }
+  
+  const shapesStr = joinShapes(shapes);
+  const typeQualifier = qualifier(type);
+  
+  return `Alt text (<=${charLimit} chars): ${formatCt(totalCt)} CT ${shapesStr.toLowerCase()} cut ${typeQualifier} diamonds ${subcategory.toLowerCase()} in ${metal}, SKU ${sku}.`;
 }

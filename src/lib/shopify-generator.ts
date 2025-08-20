@@ -8,6 +8,11 @@ import {
   buildTitle, 
   buildBody, 
   buildSeo, 
+  buildSeoTitleParent,
+  buildSeoTitleVariant,
+  buildSeoDescriptionParent,
+  buildSeoDescriptionVariant,
+  buildImageAltVariant,
   hasCenter,
   type Product 
 } from './template-builders';
@@ -418,16 +423,52 @@ export function generateShopifyRowsWithCosts(
             }
           };
 
-      // Use SEO data from template builders (parent-only)
-      const seoData = isParent ? {
-        seoTitle: productInfo.seoTitle,
-        seoDescription: productInfo.seoDescription,
-        googleMPN: sku
-      } : {
-        seoTitle: '',
-        seoDescription: '',
-        googleMPN: sku
-      };
+      // Use SEO data from template builders - EVERY variant gets SEO data now
+      let seoData;
+      
+      if (isParent) {
+        // Parent: use product-level SEO with new functions
+        const diamondType = firstVariant.inputRowRef.diamondsType?.toLowerCase() || 'natural';
+        let type: 'lab' | 'natural' | 'no-stones';
+        if (firstVariant.scenario === 'NoStones') type = 'no-stones';
+        else if (diamondType.includes('labgrown')) type = 'lab';
+        else type = 'natural';
+        
+        const subcategory = trimAll(firstVariant.inputRowRef['Subcategory'] || 'Jewelry');
+        const shapes = collectShapes(sortedVariants);
+        const caratWeights = sortedVariants.map(calculateTotalCaratWeight);
+        const caratRange = caratWeights.length > 0 ? {
+          minCt: Math.min(...caratWeights),
+          maxCt: Math.max(...caratWeights)
+        } : undefined;
+        
+        seoData = {
+          seoTitle: buildSeoTitleParent({ type, subcategory, coreNumber: variant.core, shapes, caratRange }),
+          seoDescription: buildSeoDescriptionParent({ type, subcategory, shapes, caratRange }),
+          googleMPN: sku
+        };
+      } else {
+        // Variants: use variant-specific SEO with new functions
+        const diamondType = firstVariant.inputRowRef.diamondsType?.toLowerCase() || 'natural';
+        let type: 'lab' | 'natural' | 'no-stones';
+        if (firstVariant.scenario === 'NoStones') type = 'no-stones';
+        else if (diamondType.includes('labgrown')) type = 'lab';
+        else type = 'natural';
+        
+        const subcategory = trimAll(firstVariant.inputRowRef['Subcategory'] || 'Jewelry');
+        const totalCt = calculateTotalCaratWeight(variant);
+        const shapes = collectShapes([variant]);
+        const metal = translateMetal(variant.metalCode);
+        const quality = variant.quality || variant.qualityCode || 'GH';
+        
+        const variantSeo = buildSeoDescriptionVariant({ type, subcategory, totalCt, shapes, metal, quality });
+        
+        seoData = {
+          seoTitle: buildSeoTitleVariant({ type, subcategory, sku, totalCt, shapes, metal }),
+          seoDescription: variantSeo.seoDescription,
+          googleMPN: sku
+        };
+      }
 
       const row: ShopifyRowWithCosts = {
         Handle: handle,
@@ -464,7 +505,15 @@ export function generateShopifyRowsWithCosts(
         // Image fields
         'Image Src': isParent ? '' : '',
         'Image Position': '',
-        'Image Alt Text': '',
+        'Image Alt Text': isParent ? '' : buildImageAltVariant({
+          type: firstVariant.scenario === 'NoStones' ? 'no-stones' : 
+                (firstVariant.inputRowRef.diamondsType?.toLowerCase().includes('labgrown') ? 'lab' : 'natural'),
+          subcategory: trimAll(firstVariant.inputRowRef['Subcategory'] || 'Jewelry'),
+          totalCt: calculateTotalCaratWeight(variant),
+          shapes: collectShapes([variant]),
+          metal: translateMetal(variant.metalCode),
+          sku
+        }),
         'Gift Card': isParent ? 'FALSE' : '',
         
         // SEO fields (parent-only)
