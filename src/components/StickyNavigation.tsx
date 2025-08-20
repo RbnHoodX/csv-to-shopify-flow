@@ -33,14 +33,6 @@ export const StickyNavigation: React.FC = () => {
   const showGenerateButton = useSmoothAnimation(canGenerate && !isAtGenerateSection, 500);
   const showScrollButton = useSmoothAnimation(showScrollToTop, 100);
   
-  // Debug logging (remove this in production)
-  console.log('StickyNavigation Debug:', {
-    canGenerate,
-    isAtGenerateSection,
-    showGenerateButton,
-    scrollY: window.scrollY
-  });
-  
   // Show scroll to top button when user scrolls down and check if at generate section
   useEffect(() => {
     const handleScroll = () => {
@@ -56,13 +48,6 @@ export const StickyNavigation: React.FC = () => {
         // This gives a better buffer zone for the button to disappear
         const isAtSection = rect.top <= 600;
         setIsAtGenerateSection(isAtSection);
-        
-        // Debug logging for scroll detection
-        console.log('Scroll Debug:', {
-          rectTop: rect.top,
-          isAtSection,
-          scrollY: window.scrollY
-        });
       }
     };
 
