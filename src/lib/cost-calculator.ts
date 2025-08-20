@@ -143,37 +143,82 @@ function calculateCenterStoneDiamond(variant: VariantSeed, ruleSet: RuleSet | No
   carats: number;
   pricePerCarat: number;
 } {
-  if (variant.scenario !== "Unique+Center" || !variant.centerSize) {
+  if (variant.scenario !== "Unique+Center") {
     return { cost: 0, carats: 0, pricePerCarat: 0 };
   }
 
-  const centerCt = toNum(variant.centerSize);
+  // Get center carat from input row (not from variant.centerSize)
+  const centerCt = toNum(
+    variant.inputRowRef["Center ct"] ||
+    variant.inputRowRef["Center Ct"] ||
+    variant.inputRowRef["CenterCt"] ||
+    variant.inputRowRef["Center Carat"] ||
+    variant.inputRowRef["Center"] ||
+    "0"
+  );
   
-  // Get shape from input
+  if (centerCt <= 0) {
+    return { cost: 0, carats: 0, pricePerCarat: 0 };
+  }
+  
+  // Get shape from input - check for various possible column names
   const shape = trimAll(
+    variant.inputRowRef["Center shaj"] || // From your example data
     variant.inputRowRef["Center Shape"] ||
     variant.inputRowRef["CenterShape"] ||
+    variant.inputRowRef["Center shape"] ||
     variant.inputRowRef["Shape"] ||
     "round" // Default to round
   );
+  
+  console.log(`💎 Center stone calculation for ${variant.core}:`);
+  console.log(`   - Center carat: ${centerCt}`);
+  console.log(`   - Center shape: ${shape}`);
+  console.log(`   - Quality: ${variant.quality || "GH"}`);
+  console.log(`   - Available diamond prices in rules: ${"diamondPrices" in ruleSet ? ruleSet.diamondPrices.length : 0}`);
+  if ("diamondPrices" in ruleSet && ruleSet.diamondPrices.length > 0) {
+    console.log(`   - Sample diamond prices:`, ruleSet.diamondPrices.slice(0, 3));
+  }
   
   let pricePerCarat = 150; // Default fallback
   
   // Use diamond price lookup if available
   if ("diamondPrices" in ruleSet && ruleSet.diamondPrices.length > 0) {
-    pricePerCarat = lookupDiamondPrice(
-      ruleSet.diamondPrices,
-      shape,
-      centerCt,
-      variant.quality || "GH"
-    );
+    // Try different quality values if the first one doesn't work
+    const qualitiesToTry = [variant.quality || "GH", "FG", "GH", "IJ"];
+    let foundPrice = false;
+    
+    for (const quality of qualitiesToTry) {
+      const testPrice = lookupDiamondPrice(
+        ruleSet.diamondPrices,
+        shape,
+        centerCt,
+        quality
+      );
+      
+      // If we get a price other than the default 150, we found a match
+      if (testPrice !== 150) {
+        pricePerCarat = testPrice;
+        foundPrice = true;
+        console.log(`   - Found price per carat: ${pricePerCarat} with quality: ${quality}`);
+        break;
+      }
+    }
+    
+    if (!foundPrice) {
+      console.log(`   - No matching price found, using default: ${pricePerCarat}`);
+    }
   } else {
     // Fallback to input column
     pricePerCarat = toNum(variant.inputRowRef["Price Per Carat"] || "150");
+    console.log(`   - Price per carat from input: ${pricePerCarat}`);
   }
 
+  const totalCost = centerCt * pricePerCarat;
+  console.log(`   - Total center stone cost: ${centerCt} × ${pricePerCarat} = ${totalCost}`);
+
   return {
-    cost: centerCt * pricePerCarat,
+    cost: totalCost,
     carats: centerCt,
     pricePerCarat,
   };
@@ -368,7 +413,10 @@ export function calculateCostBreakdown(
   const gramsCalc = calculateVariantGrams(variant, ruleSet);
 
   // Calculate diamond costs separately
+  console.log(`💎💎💎💎 Calculating center stone diamond for ${variant.core}`);
+
   const centerDiamondCalc = calculateCenterStoneDiamond(variant, ruleSet);
+  console.log(`💎💎💎💎 Center stone diamond cost: ${centerDiamondCalc.cost}`);
   const sideDiamondCalc = calculateSideStoneDiamond(variant, ruleSet);
 
   // Calculate metal cost

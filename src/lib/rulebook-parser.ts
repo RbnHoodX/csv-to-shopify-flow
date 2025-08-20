@@ -515,21 +515,55 @@ function extractDiamondPricesTable(
   const diamondPrices: DiamondPriceEntry[] = [];
   const headers = Object.keys(ruleRows[0]);
   
-  // Look for diamond price table after the variants section
+  console.log(`💎 Searching for diamond price table in rules file with ${ruleRows.length} rows`);
+  console.log(`💎 Headers: ${headers.join(', ')}`);
+  
+  // Check if diamond price columns exist in headers
+  const hasDiamondPriceColumns = headers.some(h => 
+    h.toLowerCase().includes('type') || 
+    h.toLowerCase().includes('shape') || 
+    h.toLowerCase().includes('stone size') || 
+    h.toLowerCase().includes('quality') || 
+    h.toLowerCase().includes('price per carat')
+  );
+  
+  console.log(`💎 Diamond price columns found in headers: ${hasDiamondPriceColumns}`);
+  
+  // Look for diamond price table - start from the beginning since it might be there
   let diamondTableStart = -1;
   for (let i = 0; i < ruleRows.length; i++) {
     const row = ruleRows[i];
     const firstCol = trimAll(row[headers[0]] || "").toLowerCase();
     const secondCol = trimAll(row[headers[1]] || "").toLowerCase();
     
-    // Look for shape names in first column to identify diamond table start
-    if (firstCol && (firstCol.includes('round') || firstCol.includes('princess') || 
-                     firstCol.includes('emerald') || firstCol.includes('oval') ||
-                     firstCol.includes('cushion') || firstCol.includes('pear') ||
-                     firstCol.includes('marquise') || firstCol.includes('asscher') ||
-                     firstCol.includes('radiant') || firstCol.includes('heart'))) {
+    // Debug: Log first few rows to see what we're looking at
+    if (i < 10) {
+      console.log(`💎 Row ${i}: "${firstCol}" | "${secondCol}"`);
+    }
+    
+    // Look for "Type" column with "Labgrown" or "Natural" value (from your example)
+    const typeIndex = headers.findIndex(h => h.toLowerCase().includes('type'));
+    const typeCol = typeIndex >= 0 ? trimAll(row[headers[typeIndex]] || "") : "";
+    
+    if (typeCol && (typeCol.toLowerCase().includes('labgrown') || typeCol.toLowerCase().includes('natural'))) {
+      console.log(`💎 Found ${typeCol} type at row ${i}: "${typeCol}"`);
+      // If we find labgrown/natural type and have diamond price columns, this is the start
+      if (hasDiamondPriceColumns && diamondTableStart === -1) {
+        diamondTableStart = i;
+        console.log(`💎 Found diamond price table starting at row ${diamondTableStart} (based on ${typeCol} type)`);
+        break;
+      }
+    }
+    
+    // Fallback: Look for shape names in second column to identify diamond table start
+    if (secondCol && (secondCol.includes('round') || secondCol.includes('princess') || 
+                     secondCol.includes('emerald') || secondCol.includes('oval') ||
+                     secondCol.includes('cushion') || secondCol.includes('pear') ||
+                     secondCol.includes('marquise') || secondCol.includes('asscher') ||
+                     secondCol.includes('ascher') || secondCol.includes('radiant') || 
+                     secondCol.includes('heart'))) {
       diamondTableStart = i;
-      console.log(`💎 Found diamond price table starting at row ${diamondTableStart}`);
+      console.log(`💎 Found diamond price table starting at row ${diamondTableStart} (based on shape in second column)`);
       break;
     }
   }
@@ -542,35 +576,83 @@ function extractDiamondPricesTable(
   // Extract diamond price entries
   for (let i = diamondTableStart; i < ruleRows.length; i++) {
     const row = ruleRows[i];
-    const shape = trimAll(row[headers[0]] || "");
-    const sizeRange = trimAll(row[headers[1]] || "");
+    
+    // Try to find the correct columns based on your example structure
+    const typeIndex = headers.findIndex(h => h.toLowerCase().includes('type'));
+    const shapeIndex = headers.findIndex(h => h.toLowerCase().includes('shape'));
+    const minIndex = headers.findIndex(h => h.toLowerCase().includes('min'));
+    const maxIndex = headers.findIndex(h => h.toLowerCase().includes('max'));
+    const qualityIndex = headers.findIndex(h => h.toLowerCase().includes('quality'));
+    const priceIndex = headers.findIndex(h => h.toLowerCase().includes('price'));
+    
+    const typeCol = typeIndex >= 0 ? trimAll(row[headers[typeIndex]] || "") : "";
+    const shapeCol = shapeIndex >= 0 ? trimAll(row[headers[shapeIndex]] || "") : "";
+    const minSizeCol = minIndex >= 0 ? trimAll(row[headers[minIndex]] || "") : "";
+    const maxSizeCol = maxIndex >= 0 ? trimAll(row[headers[maxIndex]] || "") : "";
+    const qualityCol = qualityIndex >= 0 ? trimAll(row[headers[qualityIndex]] || "") : "";
+    const priceCol = priceIndex >= 0 ? trimAll(row[headers[priceIndex]] || "") : "";
+    
+         if (i === diamondTableStart) {
+       console.log(`💎 Column indices: type=${typeIndex}, shape=${shapeIndex}, min=${minIndex}, max=${maxIndex}, quality=${qualityIndex}, price=${priceIndex}`);
+       console.log(`💎 First row data: type="${typeCol}", shape="${shapeCol}", minSize="${minSizeCol}", maxSize="${maxSizeCol}", quality="${qualityCol}", price="${priceCol}"`);
+       console.log(`💎 All headers for debugging:`, headers.map((h, idx) => `${idx}: "${h}"`));
+     }
+    
+    // Fallback to original column structure if specific columns not found
+    const shape = shapeCol || trimAll(row[headers[0]] || "");
+    const sizeRange = minSizeCol || trimAll(row[headers[1]] || "");
+    
+    console.log(`💎 Processing row ${i}: type="${typeCol}", shape="${shape}", minSize="${minSizeCol}", maxSize="${maxSizeCol}", quality="${qualityCol}", price="${priceCol}"`);
     
     // Stop if we hit empty rows or other tables
-    if (!shape || !sizeRange) continue;
+    if (!shape || (!sizeRange && !minSizeCol)) continue;
     
-    // Parse size range (e.g., "0.27-0.35" or "0.35")
-    const [minSizeStr, maxSizeStr] = sizeRange.includes('-') 
-      ? sizeRange.split('-').map(s => s.trim())
-      : [sizeRange, sizeRange];
+    let minSize: number, maxSize: number;
     
-    const minSize = toNum(minSizeStr);
-    const maxSize = toNum(maxSizeStr || minSizeStr);
-    
-    // Extract quality columns and prices (columns 2+ have quality codes and prices)
-    for (let colIndex = 2; colIndex < headers.length - 1; colIndex += 2) {
-      const quality = trimAll(row[headers[colIndex]] || "");
-      const priceStr = trimAll(row[headers[colIndex + 1]] || "");
+    if (minSizeCol && maxSizeCol) {
+      // Use separate min/max columns
+      minSize = toNum(minSizeCol);
+      maxSize = toNum(maxSizeCol);
+    } else {
+      // Parse size range (e.g., "0.27-0.35" or "0.35")
+      const [minSizeStr, maxSizeStr] = sizeRange.includes('-') 
+        ? sizeRange.split('-').map(s => s.trim())
+        : [sizeRange, sizeRange];
       
-      if (quality && priceStr) {
-        const pricePerCarat = toNum(priceStr);
-        if (pricePerCarat > 0) {
-          diamondPrices.push({
-            shape: shape.toLowerCase(),
-            minSize,
-            maxSize,
-            quality: quality.toUpperCase(),
-            pricePerCarat
-          });
+      minSize = toNum(minSizeStr);
+      maxSize = toNum(maxSizeStr || minSizeStr);
+    }
+    
+    if (qualityCol && priceCol) {
+      // Use specific quality and price columns
+      const pricePerCarat = toNum(priceCol);
+      if (pricePerCarat > 0) {
+        diamondPrices.push({
+          shape: shape.toLowerCase(),
+          minSize,
+          maxSize,
+          quality: qualityCol.toUpperCase(),
+          pricePerCarat
+        });
+        console.log(`💎 Added diamond price: ${shape} ${minSize}-${maxSize}ct ${qualityCol} = $${pricePerCarat}`);
+      }
+    } else {
+      // Extract quality columns and prices (columns 2+ have quality codes and prices)
+      for (let colIndex = 2; colIndex < headers.length - 1; colIndex += 2) {
+        const quality = trimAll(row[headers[colIndex]] || "");
+        const priceStr = trimAll(row[headers[colIndex + 1]] || "");
+        
+        if (quality && priceStr) {
+          const pricePerCarat = toNum(priceStr);
+          if (pricePerCarat > 0) {
+            diamondPrices.push({
+              shape: shape.toLowerCase(),
+              minSize,
+              maxSize,
+              quality: quality.toUpperCase(),
+              pricePerCarat
+            });
+          }
         }
       }
     }
@@ -592,17 +674,30 @@ export function lookupDiamondPrice(
   const normalizedShape = shape.toLowerCase().trim();
   const normalizedQuality = quality.toUpperCase().trim();
   
+  console.log(`🔍 Looking up diamond price for: shape="${normalizedShape}", size=${size}ct, quality="${normalizedQuality}"`);
+  console.log(`🔍 Available diamond price entries: ${diamondPrices.length}`);
+  
+  // Log available shapes and qualities for debugging
+  const availableShapes = [...new Set(diamondPrices.map(entry => entry.shape))];
+  const availableQualities = [...new Set(diamondPrices.map(entry => entry.quality))];
+  console.log(`🔍 Available shapes: ${availableShapes.join(', ')}`);
+  console.log(`🔍 Available qualities: ${availableQualities.join(', ')}`);
+  
   // Find matching entry
   for (const entry of diamondPrices) {
-    if (entry.shape === normalizedShape &&
-        size >= entry.minSize &&
-        size <= entry.maxSize &&
-        entry.quality === normalizedQuality) {
+    const shapeMatch = entry.shape === normalizedShape;
+    const sizeMatch = size >= entry.minSize && size <= entry.maxSize;
+    const qualityMatch = entry.quality === normalizedQuality;
+    
+    console.log(`🔍 Checking entry: shape="${entry.shape}" (${shapeMatch}), size=${entry.minSize}-${entry.maxSize}ct (${sizeMatch}), quality="${entry.quality}" (${qualityMatch})`);
+    
+    if (shapeMatch && sizeMatch && qualityMatch) {
+      console.log(`✅ Found matching diamond price: ${entry.pricePerCarat} per carat for ${entry.shape} ${size}ct ${entry.quality}`);
       return entry.pricePerCarat;
     }
   }
   
-  console.warn(`💎 Diamond price not found for ${shape} ${size}ct ${quality}, using default 150`);
+  console.warn(`❌ Diamond price not found for ${normalizedShape} ${size}ct ${normalizedQuality}, using default 150`);
   return 150; // Default fallback
 }
 
