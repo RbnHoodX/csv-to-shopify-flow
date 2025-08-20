@@ -4,6 +4,13 @@ import type { RuleSet, NoStonesRuleSet } from './rulebook-parser';
 import { calculateCostBreakdown, generateSKUWithRunningIndex, type CostBreakdown } from './cost-calculator';
 import type { WeightLookupTable } from './weight-lookup';
 import { generateSEOData } from './seo-generator';
+import { 
+  buildTitle, 
+  buildBody, 
+  buildSeo, 
+  hasCenter,
+  type Product 
+} from './template-builders';
 
 // Translation tables (extendable constants)
 export const METAL_TRANSLATIONS: Record<string, string> = {
@@ -212,95 +219,49 @@ function generateTCWBucketTags(minTCW: number, maxTCW: number): string[] {
   return tags;
 }
 
-/**
- * Generate body HTML based on scenario
- */
-function generateBodyHTML(variants: VariantSeed[], title: string, scenario: string): string {
-  const firstVariant = variants[0];
-  const inputRow = firstVariant.inputRowRef;
-  const diamondType = inputRow.diamondsType || 'diamonds';
-  const core = firstVariant.core;
-  const category = trimAll(inputRow['Category'] || 'Jewelry');
-  
-  if (scenario === 'NoStones') {
-    return `<p><strong>${title}</strong></p>
-<p>Expertly crafted jewelry piece from Primestyle.com. Made with precision and attention to detail.</p>
-<p>Perfect for everyday wear or special occasions.</p>`;
-  }
-  
-  // Calculate carat range for detailed description
-  const caratWeights = variants.map(calculateTotalCaratWeight);
-  const minTCW = Math.min(...caratWeights);
-  const maxTCW = Math.max(...caratWeights);
-  const caratRange = minTCW === maxTCW ? `${minTCW.toFixed(2)}` : `${minTCW.toFixed(2)}-${maxTCW.toFixed(2)}`;
-  
-  // Get diamond details
-  const centerShape = inputRow['Center shape'] || 'round';
-  const sideShapes = inputRow['Side shapes'] || inputRow['Side shape'] || '';
-  
-  // Build the detailed HTML body format
-  let bodyHTML = `<p><b>${title}<br></b>`;
-  
-  if (scenario === 'Unique+Center' && firstVariant.centerSize) {
-    const centerSize = toCt2(toNum(firstVariant.centerSize));
-    bodyHTML += `<b>${centerSize} Carat:</b><span> ${centerShape} cut center diamond weighing ${centerSize} carat</span><br>`;
-    
-    // Add side stone info if present
-    const sumSideCt = calculateSumSideCt(inputRow);
-    if (sumSideCt > 0) {
-      const sideCount = toNum(inputRow['Side Stone Count'] || inputRow['Side count'] || '0');
-      if (sideCount > 0) {
-        bodyHTML += `<b>${toCt2(sumSideCt)} Carat:</b><span> ${sideCount} ${sideShapes || 'round'} cut diamonds weighing ${toCt2(sumSideCt)} carat</span><br>`;
-      }
-    }
-  } else {
-    // For repeating or no-center scenarios
-    const totalCt = toNum(inputRow['Total Ct Weight'] || inputRow['Total ct'] || inputRow['TotalCt'] || '0');
-    if (totalCt > 0) {
-      bodyHTML += `<b>${toCt2(totalCt)} Carat:</b><span> diamonds weighing ${toCt2(totalCt)} carat</span><br>`;
-    }
-  }
-  
-  bodyHTML += `</p>`;
-  
-  // Add detailed description paragraph
-  const diamondTypeText = diamondType.toLowerCase().includes('natural') ? 'natural diamonds' : 
-                         diamondType.toLowerCase().includes('labgrown') ? 'lab grown diamonds' : 
-                         'diamonds';
-  
-  const subcategory = trimAll(inputRow['Subcategory'] || inputRow['Type'] || category);
-  
-  bodyHTML += `<p><span>Experience a true luxury with our ${caratRange} CT ${collectShapes(variants).join(' & ')} Cut - ${subcategory} MDL#${core}. This ${subcategory} crafted with ${caratRange} carat ${diamondTypeText}. Select your choice of precious metal between 14 Karat, 18 Karat Yellow, White and Rose Gold OR Platinum. Shine with uniqueness with Primestyle diamond ${subcategory}.</span></p>`;
-  
-  return bodyHTML;
-}
+
 
 /**
- * Create enhanced product info from variants per handle
+ * Create enhanced product info from variants per handle using new template builders
  */
 function createProductInfo(variants: VariantSeed[]) {
   const firstVariant = variants[0];
   const inputRow = firstVariant.inputRowRef;
   
-  // Calculate carat range for title
-  const caratWeights = variants.map(calculateTotalCaratWeight);
-  const minTCW = Math.min(...caratWeights);
-  const maxTCW = Math.max(...caratWeights);
+  // Determine diamond type
+  const diamondType = inputRow.diamondsType || 'diamonds';
+  let productDiamondType: 'Natural' | 'LabGrown' | 'NoStones';
   
-  // Collect unique shapes and format for title
-  const shapes = collectShapes(variants);
-  const shapesStr = shapes.length > 0 ? shapes.join(' & ') + ' Cut' : 'Mixed Cut';
+  if (firstVariant.scenario === 'NoStones') {
+    productDiamondType = 'NoStones';
+  } else if (diamondType.toLowerCase().includes('natural')) {
+    productDiamondType = 'Natural';
+  } else if (diamondType.toLowerCase().includes('labgrown') || diamondType.toLowerCase().includes('lab-grown')) {
+    productDiamondType = 'LabGrown';
+  } else {
+    // Default to Natural if unclear
+    productDiamondType = 'Natural';
+  }
   
-  // Get category and subcategory
+  // Determine if repeating (multiple input rows with same core)
+  const isRepeating = firstVariant.scenario === 'Repeating';
+  
+  // Create product object for template builders
+  const product: Product = {
+    variants,
+    diamondType: productDiamondType,
+    hasCenter: hasCenter(variants),
+    isRepeating
+  };
+  
+  // Use new template builders
+  const title = buildTitle(product);
+  const bodyHTML = buildBody(product);
+  const seoData = buildSeo(product);
+  
+  // Get category and subcategory for other fields
   const category = trimAll(inputRow['Category'] || 'Jewelry');
   const subcategory = trimAll(inputRow['Subcategory'] || inputRow['Type'] || 'Piece');
-  
-  // Generate title based on spec: "{MinTCW}-{MaxTCW} CT {Shapes} Cut - {Subcategory}"
-  const title = firstVariant.scenario === 'NoStones' 
-    ? `${subcategory} - Premium ${category}`
-    : minTCW === maxTCW 
-      ? `${minTCW.toFixed(2)} CT ${shapesStr} - ${subcategory}`
-      : `${minTCW.toFixed(2)}-${maxTCW.toFixed(2)} CT ${shapesStr} - ${subcategory}`;
   
   // Vendor is always "Primestyle.com"
   const vendor = 'Primestyle.com';
@@ -308,13 +269,14 @@ function createProductInfo(variants: VariantSeed[]) {
   // Type format: "{Category}_{Subcategory}"
   const type = `${category}_${subcategory}`;
   
-  // Build comprehensive tags
+  // Build comprehensive tags (keeping existing tag logic for now)
   const tagParts: string[] = [];
   
   // Add category_subcategory as single tag
   tagParts.push(`${category}_${subcategory}`);
   
   // Add unique shape tags in consistent order (before TCW tags)
+  const shapes = collectShapes(variants);
   const uniqueShapes = [...new Set(shapes)].sort(); // Remove duplicates and sort
   uniqueShapes.forEach(shape => {
     tagParts.push(`shape_${shape.toLowerCase()}`);
@@ -327,6 +289,9 @@ function createProductInfo(variants: VariantSeed[]) {
   
   // Add TCW bucket tags (only for stones scenarios)
   if (firstVariant.scenario !== 'NoStones') {
+    const caratWeights = variants.map(calculateTotalCaratWeight);
+    const minTCW = Math.min(...caratWeights);
+    const maxTCW = Math.max(...caratWeights);
     const tcwBucketTags = generateTCWBucketTags(minTCW, maxTCW);
     tagParts.push(...tcwBucketTags);
   }
@@ -342,9 +307,6 @@ function createProductInfo(variants: VariantSeed[]) {
   }
   
   const tags = tagParts.join(', ');
-  
-  // Generate body HTML
-  const bodyHTML = generateBodyHTML(variants, title, firstVariant.scenario);
   
   // Generate Google Product Category based on type
   let googleCategory = 'Apparel & Accessories > Jewelry';
@@ -367,7 +329,9 @@ function createProductInfo(variants: VariantSeed[]) {
     googleCategory,
     diamondType: inputRow.diamondsType || 'diamonds',
     qualities: [...new Set(variants.map(v => v.qualityCode).filter(Boolean))],
-    metals: [...new Set(variants.map(v => v.metalCode))]
+    metals: [...new Set(variants.map(v => v.metalCode))],
+    seoTitle: seoData.title,
+    seoDescription: seoData.description
   };
 }
 
@@ -454,9 +418,16 @@ export function generateShopifyRowsWithCosts(
             }
           };
 
-      // Generate SEO data using business rules
-      const totalCarats = calculateTotalCaratWeight(variant);
-      const seoData = generateSEOData(variant, totalCarats, sku, isParent);
+      // Use SEO data from template builders (parent-only)
+      const seoData = isParent ? {
+        seoTitle: productInfo.seoTitle,
+        seoDescription: productInfo.seoDescription,
+        googleMPN: sku
+      } : {
+        seoTitle: '',
+        seoDescription: '',
+        googleMPN: sku
+      };
 
       const row: ShopifyRowWithCosts = {
         Handle: handle,
