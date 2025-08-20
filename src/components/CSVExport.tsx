@@ -13,7 +13,8 @@ export const CSVExport: React.FC = () => {
     variantExpansion, 
     generatedCSV, 
     shopifyRowsWithCosts,
-    generateShopifyCSV 
+    generateShopifyCSV,
+    isGenerating
   } = useCSVStore();
   
   // Check pipeline prerequisites
@@ -42,6 +43,7 @@ export const CSVExport: React.FC = () => {
 
   const getFileStatus = (file: any) => {
     if (!file.uploaded) return <Badge variant="secondary">Missing</Badge>;
+    if (isGenerating) return <Badge variant="outline" className="text-blue-600 border-blue-600 animate-pulse">✓ {file.rowCount} rows</Badge>;
     return <Badge variant="outline" className="text-green-600 border-green-600">✓ {file.rowCount} rows</Badge>;
   };
 
@@ -72,7 +74,12 @@ export const CSVExport: React.FC = () => {
                   {variantExpansion.result.stats.totalVariants} variants
                 </Badge>
               )}
-              {hasGeneratedCSV && (
+              {isGenerating && (
+                <Badge variant="default" className="animate-pulse">
+                  🔄 Generating...
+                </Badge>
+              )}
+              {!isGenerating && hasGeneratedCSV && (
                 <Badge variant="outline" className="text-green-600 border-green-600">
                   ✓ CSV Ready
                 </Badge>
@@ -107,6 +114,11 @@ export const CSVExport: React.FC = () => {
             <div className="flex items-center gap-2 mb-3">
               <FileText className="h-4 w-4" />
               <span className="font-medium">Pipeline Status</span>
+              {isGenerating && (
+                <Badge variant="default" className="ml-auto animate-pulse">
+                  🔄 In Progress
+                </Badge>
+              )}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
               <div className="flex items-center justify-between">
@@ -123,26 +135,35 @@ export const CSVExport: React.FC = () => {
               </div>
               <div className="flex items-center justify-between">
                 <span>CSV Generated:</span>
-                <Badge variant={hasGeneratedCSV ? "default" : "secondary"}>
-                  {hasGeneratedCSV ? `✓ ${totalRows} rows` : 'Pending'}
+                <Badge variant={hasGeneratedCSV ? "default" : isGenerating ? "default" : "secondary"}>
+                  {hasGeneratedCSV ? `✓ ${totalRows} rows` : isGenerating ? '🔄 Generating...' : 'Pending'}
                 </Badge>
               </div>
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <Button
               onClick={handleGenerate}
-              disabled={!canGenerate}
+              disabled={!canGenerate || isGenerating}
               size="lg"
               className="flex items-center gap-2"
             >
-              <Play className="h-4 w-4" />
-              Generate Shopify CSV
+              {isGenerating ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Play className="h-4 w-4" />
+                  Generate Shopify CSV
+                </>
+              )}
             </Button>
             
-            {hasGeneratedCSV && (
+            {hasGeneratedCSV && !isGenerating && (
               <Button onClick={handleDownload} variant="outline" size="lg">
                 <Download className="h-4 w-4 mr-2" />
                 Download CSV ({totalRows} rows)
@@ -169,7 +190,62 @@ export const CSVExport: React.FC = () => {
       </Card>
 
       {/* CSV Preview */}
-      {hasGeneratedCSV && (
+      {isGenerating && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
+              Generating CSV...
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-8 text-center">
+            <div className="space-y-4">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+              <div className="text-lg font-medium">Processing CSV Generation Pipeline</div>
+              <div className="text-sm text-muted-foreground mb-4">
+                This may take a few moments depending on the size of your data...
+              </div>
+              
+              {/* Pipeline Stages Progress */}
+              <div className="space-y-3">
+                <div className="text-sm font-medium text-muted-foreground">Pipeline Stages:</div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span>Stage 1: Validating input files</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span>Stage 2: Building rule sets and lookups</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span>Stage 3: Validating variant expansion data</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                    <span>Stage 4: Computing costs and pricing</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
+                    <span>Stage 5: Assembling parent-child rows with metadata</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
+                    <span>Stage 6: Serializing CSV with spec-compliant headers</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
+                    <span>Stage 7: Final validation and statistics</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
+      {!isGenerating && hasGeneratedCSV && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

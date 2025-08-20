@@ -51,6 +51,7 @@ interface CSVStore {
   logs: LogEntry[];
   generatedCSV: string;
   shopifyRowsWithCosts?: any[]; // For preview functionality
+  isGenerating: boolean; // Loading state for CSV generation
   uploadFile: (fileType: keyof CSVStore['files'], file: File) => Promise<void>;
   removeFile: (fileType: keyof CSVStore['files']) => void;
   addLog: (level: LogEntry['level'], message: string) => void;
@@ -81,6 +82,7 @@ export const useCSVStore = create<CSVStore>((set, get) => ({
   weightTable: getDefaultWeightLookup(),
   logs: [],
   generatedCSV: '',
+  isGenerating: false,
 
   uploadFile: async (fileType, file) => {
     const { addLog, processInputAnalysis, processVariantExpansion } = get();
@@ -260,6 +262,9 @@ export const useCSVStore = create<CSVStore>((set, get) => ({
   generateShopifyCSV: async () => {
     const { variantExpansion, files, addLog, clearLogs } = get();
     
+    // Set loading state
+    set({ isGenerating: true });
+    
     // Clear previous logs for new generation
     clearLogs();
     
@@ -381,6 +386,9 @@ export const useCSVStore = create<CSVStore>((set, get) => ({
     } catch (error) {
       addLog('error', `❌ Pipeline failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       console.error('Generation pipeline error:', error);
+    } finally {
+      // Always reset loading state
+      set({ isGenerating: false });
     }
   },
 
