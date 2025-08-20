@@ -7,6 +7,7 @@ import {
 } from "./csv-parser";
 import type { VariantSeed } from "./variant-expansion";
 import type { RuleSet, NoStonesRuleSet } from "./rulebook-parser";
+import { lookupDiamondPrice } from "./rulebook-parser";
 import { calculatePricing, type PricingResult } from "./pricing-calculator";
 import type { WeightLookupTable } from "./weight-lookup";
 import { getVariantWeight } from "./weight-lookup";
@@ -135,7 +136,7 @@ function calculateVariantGrams(
 }
 
 /**
- * Calculate center stone diamond cost
+ * Calculate center stone diamond cost using diamond price lookup
  */
 function calculateCenterStoneDiamond(variant: VariantSeed, ruleSet: RuleSet | NoStonesRuleSet): {
   cost: number;
@@ -147,7 +148,29 @@ function calculateCenterStoneDiamond(variant: VariantSeed, ruleSet: RuleSet | No
   }
 
   const centerCt = toNum(variant.centerSize);
-  const pricePerCarat = toNum(variant.inputRowRef["Price Per Carat"] || "150");
+  
+  // Get shape from input
+  const shape = trimAll(
+    variant.inputRowRef["Center Shape"] ||
+    variant.inputRowRef["CenterShape"] ||
+    variant.inputRowRef["Shape"] ||
+    "round" // Default to round
+  );
+  
+  let pricePerCarat = 150; // Default fallback
+  
+  // Use diamond price lookup if available
+  if ("diamondPrices" in ruleSet && ruleSet.diamondPrices.length > 0) {
+    pricePerCarat = lookupDiamondPrice(
+      ruleSet.diamondPrices,
+      shape,
+      centerCt,
+      variant.quality || "GH"
+    );
+  } else {
+    // Fallback to input column
+    pricePerCarat = toNum(variant.inputRowRef["Price Per Carat"] || "150");
+  }
 
   return {
     cost: centerCt * pricePerCarat,
@@ -157,7 +180,7 @@ function calculateCenterStoneDiamond(variant: VariantSeed, ruleSet: RuleSet | No
 }
 
 /**
- * Calculate side stones diamond cost
+ * Calculate side stones diamond cost using diamond price lookup
  */
 function calculateSideStoneDiamond(variant: VariantSeed, ruleSet: RuleSet | NoStonesRuleSet): {
   cost: number;
@@ -169,12 +192,50 @@ function calculateSideStoneDiamond(variant: VariantSeed, ruleSet: RuleSet | NoSt
   }
 
   const sideCarats = calculateSumSideCt(variant.inputRowRef);
-  const pricePerCarat = toNum(variant.inputRowRef["Price Per Carat"] || "150");
+  let totalCost = 0;
+  let weightedPricePerCarat = 0;
+  
+  // Calculate side stone cost by looking up each side stone group
+  if ("diamondPrices" in ruleSet && ruleSet.diamondPrices.length > 0 && sideCarats > 0) {
+    // Get side stone count for average size calculation
+    const sideStoneCount = toNum(
+      variant.inputRowRef["Side Stone Count"] ||
+      variant.inputRowRef["SideStoneCount"] ||
+      variant.inputRowRef["Side Stones"] ||
+      "1"
+    );
+    
+    // Calculate average size per stone
+    const avgSizePerStone = sideStoneCount > 0 ? sideCarats / sideStoneCount : sideCarats;
+    
+    // Get side stone shape (usually round unless specified)
+    const sideShape = trimAll(
+      variant.inputRowRef["Side Shape"] ||
+      variant.inputRowRef["SideShape"] ||
+      "round"
+    );
+    
+    // Lookup price for side stones
+    const pricePerCarat = lookupDiamondPrice(
+      ruleSet.diamondPrices,
+      sideShape,
+      avgSizePerStone,
+      variant.quality || "GH"
+    );
+    
+    totalCost = sideCarats * pricePerCarat;
+    weightedPricePerCarat = pricePerCarat;
+  } else {
+    // Fallback to input column
+    const pricePerCarat = toNum(variant.inputRowRef["Price Per Carat"] || "150");
+    totalCost = sideCarats * pricePerCarat;
+    weightedPricePerCarat = pricePerCarat;
+  }
 
   return {
-    cost: sideCarats * pricePerCarat,
+    cost: totalCost,
     carats: sideCarats,
-    pricePerCarat,
+    pricePerCarat: weightedPricePerCarat,
   };
 }
 

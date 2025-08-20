@@ -1,5 +1,13 @@
 import { trimAll, toNum } from "./csv-parser";
 
+export interface DiamondPriceEntry {
+  shape: string;
+  minSize: number;
+  maxSize: number;
+  quality: string;
+  pricePerCarat: number;
+}
+
 export interface RuleSet {
   metalsG: string[]; // Metals (center-present)
   centersH: string[]; // Center Sizes
@@ -14,6 +22,7 @@ export interface RuleSet {
   metalPrice: Map<string, number>; // Metal code → price per gram
   labor: Map<string, number>; // Labor type → cost
   margins: Array<{ begin: number; end?: number; m: number }>; // Margin ranges
+  diamondPrices: DiamondPriceEntry[]; // Diamond price lookup table
 }
 
 export interface NoStonesRuleSet {
@@ -153,6 +162,7 @@ export function extractRuleSets(ruleRows: Record<string, string>[]): RuleSet {
       metalPrice: new Map(),
       labor: new Map(),
       margins: [],
+      diamondPrices: [],
     };
   }
 
@@ -439,6 +449,9 @@ export function extractRuleSets(ruleRows: Record<string, string>[]): RuleSet {
   // Labor and margins tables (approximate positions)
   const laborTable = extractLaborTable(ruleRows, tableStartRow + 20);
   const marginTable = extractMarginTable(ruleRows, tableStartRow + 30);
+  
+  // Diamond price table (columns A-F after the variants section)
+  const diamondPrices = extractDiamondPricesTable(ruleRows);
 
   laborTable.forEach((value, key) => labor.set(key, value));
   margins.push(...marginTable);
@@ -462,6 +475,7 @@ export function extractRuleSets(ruleRows: Record<string, string>[]): RuleSet {
     metalPrice,
     labor,
     margins,
+    diamondPrices,
   };
 }
 
@@ -492,6 +506,107 @@ export function extractNoStonesRuleSets(
 }
 
 /**
+ * Extract diamond prices table from rules file (columns A-F)
+ * Expected format: Shape | MinSize | MaxSize | Quality | ... | PricePerCarat
+ */
+function extractDiamondPricesTable(
+  ruleRows: Record<string, string>[]
+): DiamondPriceEntry[] {
+  const diamondPrices: DiamondPriceEntry[] = [];
+  const headers = Object.keys(ruleRows[0]);
+  
+  // Look for diamond price table after the variants section
+  let diamondTableStart = -1;
+  for (let i = 0; i < ruleRows.length; i++) {
+    const row = ruleRows[i];
+    const firstCol = trimAll(row[headers[0]] || "").toLowerCase();
+    const secondCol = trimAll(row[headers[1]] || "").toLowerCase();
+    
+    // Look for shape names in first column to identify diamond table start
+    if (firstCol && (firstCol.includes('round') || firstCol.includes('princess') || 
+                     firstCol.includes('emerald') || firstCol.includes('oval') ||
+                     firstCol.includes('cushion') || firstCol.includes('pear') ||
+                     firstCol.includes('marquise') || firstCol.includes('asscher') ||
+                     firstCol.includes('radiant') || firstCol.includes('heart'))) {
+      diamondTableStart = i;
+      console.log(`💎 Found diamond price table starting at row ${diamondTableStart}`);
+      break;
+    }
+  }
+  
+  if (diamondTableStart === -1) {
+    console.warn(`💎 Diamond price table not found in rules file`);
+    return diamondPrices;
+  }
+  
+  // Extract diamond price entries
+  for (let i = diamondTableStart; i < ruleRows.length; i++) {
+    const row = ruleRows[i];
+    const shape = trimAll(row[headers[0]] || "");
+    const sizeRange = trimAll(row[headers[1]] || "");
+    
+    // Stop if we hit empty rows or other tables
+    if (!shape || !sizeRange) continue;
+    
+    // Parse size range (e.g., "0.27-0.35" or "0.35")
+    const [minSizeStr, maxSizeStr] = sizeRange.includes('-') 
+      ? sizeRange.split('-').map(s => s.trim())
+      : [sizeRange, sizeRange];
+    
+    const minSize = toNum(minSizeStr);
+    const maxSize = toNum(maxSizeStr || minSizeStr);
+    
+    // Extract quality columns and prices (columns 2+ have quality codes and prices)
+    for (let colIndex = 2; colIndex < headers.length - 1; colIndex += 2) {
+      const quality = trimAll(row[headers[colIndex]] || "");
+      const priceStr = trimAll(row[headers[colIndex + 1]] || "");
+      
+      if (quality && priceStr) {
+        const pricePerCarat = toNum(priceStr);
+        if (pricePerCarat > 0) {
+          diamondPrices.push({
+            shape: shape.toLowerCase(),
+            minSize,
+            maxSize,
+            quality: quality.toUpperCase(),
+            pricePerCarat
+          });
+        }
+      }
+    }
+  }
+  
+  console.log(`💎 Extracted ${diamondPrices.length} diamond price entries`);
+  return diamondPrices;
+}
+
+/**
+ * Lookup diamond price by shape, size, and quality
+ */
+export function lookupDiamondPrice(
+  diamondPrices: DiamondPriceEntry[],
+  shape: string,
+  size: number,
+  quality: string
+): number {
+  const normalizedShape = shape.toLowerCase().trim();
+  const normalizedQuality = quality.toUpperCase().trim();
+  
+  // Find matching entry
+  for (const entry of diamondPrices) {
+    if (entry.shape === normalizedShape &&
+        size >= entry.minSize &&
+        size <= entry.maxSize &&
+        entry.quality === normalizedQuality) {
+      return entry.pricePerCarat;
+    }
+  }
+  
+  console.warn(`💎 Diamond price not found for ${shape} ${size}ct ${quality}, using default 150`);
+  return 150; // Default fallback
+}
+
+/**
  * Log extracted rule set statistics
  */
 export function logRuleSetStats(
@@ -514,6 +629,7 @@ export function logRuleSetStats(
     console.log(`- Metal Price table: ${ruleSet.metalPrice.size} entries`);
     console.log(`- Labor table: ${ruleSet.labor.size} entries`);
     console.log(`- Margin ranges: ${ruleSet.margins.length} entries`);
+    console.log(`- Diamond prices: ${ruleSet.diamondPrices.length} entries`);
 
     // Log some sample data
     console.log("Sample metals G:", ruleSet.metalsG.slice(0, 5));
@@ -522,5 +638,6 @@ export function logRuleSetStats(
       "Weight Index entries:",
       Array.from(ruleSet.weightIndex.entries()).slice(0, 3)
     );
+    console.log("Sample diamond prices:", ruleSet.diamondPrices.slice(0, 3));
   }
 }

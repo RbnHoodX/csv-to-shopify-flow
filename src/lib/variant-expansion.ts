@@ -8,7 +8,8 @@ export interface VariantSeed {
   scenario: 'Unique+Center' | 'Unique+NoCenter' | 'Repeating' | 'NoStones';
   metalCode: string;
   centerSize?: string;
-  qualityCode?: string;
+  quality?: string; // Diamond quality (GH, IJ, etc.)
+  qualityCode?: string; // Legacy field
   inputRowRef: InputRow;
 }
 
@@ -90,7 +91,8 @@ function expandUniqueCenterVariants(
       scenario: 'Unique+Center',
       metalCode: combo.metal,
       centerSize: combo.center,
-      qualityCode: combo.quality,
+      quality: combo.quality, // Use quality instead of qualityCode
+      qualityCode: combo.quality, // Keep legacy field for backward compatibility
       inputRowRef: inputRow
     });
   }
@@ -121,7 +123,8 @@ function expandNoCenterVariants(
       core: inputRow.coreNumber,
       scenario,
       metalCode: combo.metal,
-      qualityCode: combo.quality,
+      quality: combo.quality, // Use quality instead of qualityCode
+      qualityCode: combo.quality, // Keep legacy field for backward compatibility
       inputRowRef: inputRow
     });
   }
