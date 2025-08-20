@@ -320,6 +320,11 @@ function createProductInfo(variants: VariantSeed[]) {
     tagParts.push(`shape_${shape.toLowerCase()}`);
   });
   
+  // Always add shape_round if it's not already there
+  if (!uniqueShapes.some(shape => shape.toLowerCase() === 'round')) {
+    tagParts.push('shape_round');
+  }
+  
   // Add TCW bucket tags (only for stones scenarios)
   if (firstVariant.scenario !== 'NoStones') {
     const tcwBucketTags = generateTCWBucketTags(minTCW, maxTCW);
