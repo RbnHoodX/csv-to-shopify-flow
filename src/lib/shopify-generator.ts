@@ -159,17 +159,29 @@ function collectShapes(variants: VariantSeed[]): string[] {
   const shapes = new Set<string>();
   
   for (const variant of variants) {
-    // Add center shape if present
-    if (variant.inputRowRef['Center shape']) {
-      const centerShape = trimAll(variant.inputRowRef['Center shape']);
-      if (centerShape) {
-        // Convert to title case
-        shapes.add(centerShape.charAt(0).toUpperCase() + centerShape.slice(1).toLowerCase());
-      }
+    // Add center shape if present (check multiple column name variations)
+    const centerShape = trimAll(
+      variant.inputRowRef['Center shape'] ||
+      variant.inputRowRef['Center Shape'] ||
+      variant.inputRowRef['CenterShape'] ||
+      variant.inputRowRef['Shape'] ||
+      ''
+    );
+    if (centerShape) {
+      // Convert to title case
+      shapes.add(centerShape.charAt(0).toUpperCase() + centerShape.slice(1).toLowerCase());
     }
     
-    // Add side shapes (may be comma-separated)
-    const sideShapes = variant.inputRowRef['Side shapes'] || variant.inputRowRef['Side shape'] || '';
+    // Add side shapes (may be comma-separated, check multiple column name variations)
+    const sideShapes = trimAll(
+      variant.inputRowRef['Side shapes'] || 
+      variant.inputRowRef['Side shape'] || 
+      variant.inputRowRef['Side Shapes'] || 
+      variant.inputRowRef['Side Shape'] || 
+      variant.inputRowRef['SideShapes'] || 
+      variant.inputRowRef['SideShape'] || 
+      ''
+    );
     if (sideShapes) {
       const shapeList = sideShapes.split(',').map((s: string) => trimAll(s)).filter((s: string) => s);
       shapeList.forEach((shape: string) => {
