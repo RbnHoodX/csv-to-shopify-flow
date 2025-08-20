@@ -443,8 +443,8 @@ export function generateShopifyRowsWithCosts(
         Handle: handle,
         
         // Parent-only fields (blank for children) - Following exact spec order
-        Title: isParent ? productInfo.title : '',
-        'Body (HTML)': isParent ? productInfo.bodyHTML : '',
+        Title: productInfo.title,
+        'Body (HTML)': productInfo.bodyHTML,
         Vendor: isParent ? productInfo.vendor : '',
         Type: isParent ? productInfo.type : '',
         Tags: isParent ? productInfo.tags : '',
@@ -465,17 +465,17 @@ export function generateShopifyRowsWithCosts(
         'Variant Inventory Qty': '1', // Fixed: 1 (not 10)
         'Variant Inventory Policy': 'Continue', // Fixed: "Continue" with capital C
         'Variant Fulfillment Service': 'Manual', // Fixed: "Manual" with capital M
-        'Variant Price': toFixed2(costBreakdown.pricing.variantPrice),
-        'Variant Compare At Price': toFixed2(costBreakdown.pricing.compareAtPrice),
+        'Variant Price': `$${toFixed2(costBreakdown.pricing.variantPrice)}`,
+        'Variant Compare At Price': `$${toFixed2(costBreakdown.pricing.compareAtPrice)}`,
         'Variant Requires Shipping': 'TRUE',
         'Variant Taxable': 'TRUE',
         'Variant Barcode': '',
         
         // Image fields
         'Image Src': isParent ? '' : '',
-        'Image Position': isParent ? '1' : '',
-        'Image Alt Text': isParent ? productInfo.title : '',
-        'Gift Card': 'FALSE',
+        'Image Position': '',
+        'Image Alt Text': '',
+        'Gift Card': isParent ? 'FALSE' : '',
         
         // SEO fields (parent-only)
         'SEO Title': seoData.seoTitle,
@@ -498,30 +498,30 @@ export function generateShopifyRowsWithCosts(
         
         // Additional variant fields
         'Variant Image': '',
-        'Variant Weight Unit': 'g',
+        'Variant Weight Unit': 'Grams',
         'Variant Tax Code': '',
-        'Cost per item': toFixed2(costBreakdown.totalCost),
+        'Cost per item': `$${toFixed2(costBreakdown.totalCost)}`,
         
         // New spec fields
-        'Product Type': isParent ? productInfo.type : '',
+        'Product Type': productInfo.type,
         'Core Number': variant.core,
         Category: isParent ? trimAll(firstVariant.inputRowRef['Category'] || 'Jewelry') : '',
         
         // Cost breakdown fields
-        'Center Stone Diamond': toFixed2(costBreakdown.centerStoneDiamond),
-        'Side Stones Diamond': toFixed2(costBreakdown.sideStoneDiamond),
-        'Metal Cost': toFixed2(costBreakdown.metalCost),
-        'Center Stone Labor': toFixed2(costBreakdown.centerStoneLabor),
-        'Side Stones Labor': toFixed2(costBreakdown.sideStoneLabor),
-        Polish: toFixed2(costBreakdown.polishCost),
-        Bracelets: toFixed2(costBreakdown.braceletsCost),
-        Pendants: toFixed2(costBreakdown.pendantsCost),
-        'CAD Creation': toFixed2(costBreakdown.cadCreationCost),
-        Additional: toFixed2(costBreakdown.additionalCost),
+        'Center Stone Diamond': `$${toFixed2(costBreakdown.centerStoneDiamond)}`,
+        'Side Stones Diamond': `$${toFixed2(costBreakdown.sideStoneDiamond)}`,
+        'Metal Cost': `$${toFixed2(costBreakdown.metalCost)}`,
+        'Center Stone Labor': `$${toFixed2(costBreakdown.centerStoneLabor)}`,
+        'Side Stones Labor': `$${toFixed2(costBreakdown.sideStoneLabor)}`,
+        Polish: `$${toFixed2(costBreakdown.polishCost)}`,
+        Bracelets: `$${toFixed2(costBreakdown.braceletsCost)}`,
+        Pendants: `$${toFixed2(costBreakdown.pendantsCost)}`,
+        'CAD Creation': `$${toFixed2(costBreakdown.cadCreationCost)}`,
+        Additional: `$${toFixed2(costBreakdown.additionalCost)}`,
         
         // Duplicate fields per spec
-        'Title (duplicate)': isParent ? productInfo.title : '',
-        'Description (duplicate)': isParent ? productInfo.bodyHTML : '',
+        'Title (duplicate)': productInfo.title,
+        'Description (duplicate)': productInfo.bodyHTML,
         
         // Cost breakdown for analysis
         costBreakdown
