@@ -505,10 +505,10 @@ export function generateShopifyRowsWithCosts(
         'Google Shopping / Gender': isParent ? 'Female' : '',
         'Google Shopping / Age Group': isParent ? 'Adult' : '',
         'Google Shopping / MPN': seoData.googleMPN,  // MPN on all variants
-        'Google Shopping / AdWords Grouping': '',
+        'Google Shopping / AdWords Grouping': isParent ? productInfo.type : '',
         'Google Shopping / AdWords Labels': '',
-        'Google Shopping / Condition': isParent ? 'new' : '',
-        'Google Shopping / Custom Product': '',
+        'Google Shopping / Condition': isParent ? 'New' : '',
+        'Google Shopping / Custom Product': isParent ? 'FALSE' : '',
         'Google Shopping / Custom Label 0': '',
         'Google Shopping / Custom Label 1': '',
         'Google Shopping / Custom Label 2': '',
@@ -524,7 +524,7 @@ export function generateShopifyRowsWithCosts(
         // New spec fields
         'Product Type': productInfo.type,
         'Core Number': variant.core,
-        Category: isParent ? trimAll(firstVariant.inputRowRef['Category'] || 'Jewelry') : '',
+        Category: trimAll(firstVariant.inputRowRef['Category'] || 'Jewelry'),
         
         // Cost breakdown fields
         'Center Stone Diamond': `$${toFixed2(costBreakdown.centerStoneDiamond)}`,
@@ -539,8 +539,8 @@ export function generateShopifyRowsWithCosts(
         Additional: `$${toFixed2(costBreakdown.additionalCost)}`,
         
         // Duplicate fields per spec
-        'Title (duplicate)': isParent ? productInfo.title : '',
-        'Description (duplicate)': isParent ? productInfo.bodyHTML : '',
+        'Title (duplicate)': productInfo.title,
+        'Description (duplicate)': productInfo.bodyHTML,
         
         // Cost breakdown for analysis
         costBreakdown
