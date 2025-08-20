@@ -314,10 +314,14 @@ function createProductInfo(variants: VariantSeed[]) {
     tagParts.push(...tcwBucketTags);
   }
   
-  // Add input tags if present
+  // Add input tags if present (but filter out shape tags to avoid duplication)
   const inputTags = trimAll(inputRow['Tags'] || inputRow['Keywords'] || '');
   if (inputTags) {
-    tagParts.push(inputTags);
+    const inputTagArray = inputTags.split(',').map(tag => tag.trim());
+    const filteredInputTags = inputTagArray.filter(tag => !tag.toLowerCase().startsWith('shape_'));
+    if (filteredInputTags.length > 0) {
+      tagParts.push(...filteredInputTags);
+    }
   }
   
   const tags = tagParts.join(', ');
