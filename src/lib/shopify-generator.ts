@@ -299,14 +299,12 @@ function createProductInfo(variants: VariantSeed[]) {
   // Build comprehensive tags
   const tagParts: string[] = [];
   
-  // Add category
-  tagParts.push(category);
-  
-  // Add category_subcategory as single tag
+  // Add category_subcategory as single tag (no standalone category)
   tagParts.push(`${category}_${subcategory}`);
   
-  // Add shape tags
-  shapes.forEach(shape => {
+  // Add unique shape tags in consistent order
+  const uniqueShapes = [...new Set(shapes)].sort(); // Remove duplicates and sort
+  uniqueShapes.forEach(shape => {
     tagParts.push(`shape_${shape.toLowerCase()}`);
   });
   
@@ -322,7 +320,7 @@ function createProductInfo(variants: VariantSeed[]) {
     tagParts.push(inputTags);
   }
   
-  const tags = tagParts.join(', ');
+  const tags = tagParts.join(',');
   
   // Generate body HTML
   const bodyHTML = generateBodyHTML(variants, title, firstVariant.scenario);
