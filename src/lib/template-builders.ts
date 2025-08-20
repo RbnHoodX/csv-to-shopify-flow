@@ -214,7 +214,38 @@ export function buildBody(product: Product): string {
   const title = buildTitle(product);
   
   if (diamondType === 'NoStones') {
-    return `<div><p><strong>${title}</strong></p></div>`;
+    // Special handling for no-stone items - match the exact sample format
+    const { variants } = product;
+    const inputRow = variants[0]?.inputRowRef;
+    const width = inputRow?.['Unique Characteristics (width mm)'] || inputRow?.['Unique Charcteristic/ Width for plain wedding bands'];
+    const subcategory = inputRow?.['Subcategory'] || 'Plain Wedding Bands';
+    
+    let html = '<div>';
+    
+    // Add title
+    html += `<p><strong>${title}</strong></p>`;
+    
+    // Add main marketing paragraph (similar to diamond items but adapted for no-stones)
+    html += `<p>Experience true luxury with our ${title}. This ${subcategory.toLowerCase()} is expertly crafted with precision and attention to detail. Select your choice of precious metal between 14 Karat, 18 Karat Yellow, White and Rose Gold, or Platinum. At Primestyle.com, we deal ONLY with 100% real, natural, and conflict-free diamonds. Our diamonds are NOT enhanced nor treated. Shine with uniqueness with Primestyle diamond ${subcategory.toLowerCase()}.</p>`;
+    
+    // Add subcategory section header
+    html += `<p><strong>${subcategory} - Premium Rings</strong></p>`;
+    
+    // Add craftsmanship description
+    html += `<p>Expertly crafted jewelry piece from Primestyle.com. Made with precision and attention to detail.</p>`;
+    html += `<p>Perfect for everyday wear or special occasions.</p>`;
+    
+    // Add width-specific section if width is available
+    if (width) {
+      html += `<p><strong>${width} mm ${subcategory} in 14KT, 18KT &amp; Platinum</strong></p>`;
+      html += `<p>Reward yourself with our ${width} mm ${subcategory.toLowerCase()} in 14KT, 18KT, and Platinum.</p>`;
+      html += `<p>Select your choice of precious metal between 14 Karat, 18 Karat Yellow, White and Rose Gold, or Platinum.</p>`;
+      html += `<p>At Primestyle.com, we deal ONLY with 100% real, natural, and conflict-free diamonds. Our diamonds are NOT enhanced nor treated.</p>`;
+      html += `<p>Shine with chic with Primestyle diamonds ${subcategory.toLowerCase()}.</p>`;
+    }
+    
+    html += '</div>';
+    return html;
   }
   
   let html = '<div>';
