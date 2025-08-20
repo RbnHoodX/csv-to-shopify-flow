@@ -24,17 +24,20 @@ const createMockCostBreakdown = (sku: string, price: string): CostBreakdown => {
   const compareAtPrice = totalCost * 4;
   
   return {
-    diamondCost: totalCost * 0.4,
+    centerStoneDiamond: totalCost * 0.3,
+    sideStoneDiamond: totalCost * 0.1,
     metalCost: totalCost * 0.3,
-    sideStoneCost: totalCost * 0.1,
-    centerStoneCost: totalCost * 0.05,
+    centerStoneLabor: 5,
+    sideStoneLabor: totalCost * 0.05,
     polishCost: 25,
     braceletsCost: 0,
+    pendantsCost: 0,
     cadCreationCost: 20,
-    constantCost: 25,
+    additionalCost: 25,
     totalCost,
     variantGrams: 5.5,
     sku,
+    published: true,
     pricing: {
       cost: totalCost,
       multiplier: 2.5,
@@ -46,11 +49,14 @@ const createMockCostBreakdown = (sku: string, price: string): CostBreakdown => {
       baseGrams: 5.0,
       weightMultiplier: 1.1,
       metalPricePerGram: 2.5,
-      diamondCarats: 1.25,
-      diamondPricePerCarat: 150,
+      centerCarats: 1.0,
+      sideCarats: 0.25,
+      centerPricePerCarat: 150,
+      sidePricePerCarat: 150,
       sideStoneCount: 4,
       hasCenter: true,
-      isBracelet: false
+      isBracelet: false,
+      isPendant: false
     }
   };
 };

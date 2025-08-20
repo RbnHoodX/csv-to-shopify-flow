@@ -33,10 +33,16 @@ export const CostBreakdownDrawer: React.FC<CostBreakdownDrawerProps> = ({
 
   const costItems = [
     {
-      label: 'Diamond Cost',
-      value: costBreakdown.diamondCost,
-      description: `${toFixed2(costBreakdown.details.diamondCarats)} carats × $${toFixed2(costBreakdown.details.diamondPricePerCarat)}/ct`,
+      label: 'Center Stone Diamond',
+      value: costBreakdown.centerStoneDiamond,
+      description: `${toFixed2(costBreakdown.details.centerCarats)} carats × $${toFixed2(costBreakdown.details.centerPricePerCarat)}/ct`,
       color: 'text-blue-600'
+    },
+    {
+      label: 'Side Stones Diamond',
+      value: costBreakdown.sideStoneDiamond,
+      description: `${toFixed2(costBreakdown.details.sideCarats)} carats × $${toFixed2(costBreakdown.details.sidePricePerCarat)}/ct`,
+      color: 'text-blue-400'
     },
     {
       label: 'Metal Cost',
@@ -45,16 +51,16 @@ export const CostBreakdownDrawer: React.FC<CostBreakdownDrawerProps> = ({
       color: 'text-yellow-600'
     },
     {
-      label: 'Side Stone Labor',
-      value: costBreakdown.sideStoneCost,
-      description: `${costBreakdown.details.sideStoneCount} stones`,
-      color: 'text-green-600'
-    },
-    {
       label: 'Center Stone Labor',
-      value: costBreakdown.centerStoneCost,
+      value: costBreakdown.centerStoneLabor,
       description: costBreakdown.details.hasCenter ? 'Has center stone' : 'No center stone',
       color: 'text-purple-600'
+    },
+    {
+      label: 'Side Stones Labor',
+      value: costBreakdown.sideStoneLabor,
+      description: `${costBreakdown.details.sideStoneCount} stones`,
+      color: 'text-green-600'
     },
     {
       label: 'Polish',
@@ -69,14 +75,20 @@ export const CostBreakdownDrawer: React.FC<CostBreakdownDrawerProps> = ({
       color: 'text-pink-600'
     },
     {
+      label: 'Pendants',
+      value: costBreakdown.pendantsCost,
+      description: costBreakdown.details.isPendant ? 'Pendant category' : 'Not a pendant',
+      color: 'text-orange-600'
+    },
+    {
       label: 'CAD Creation',
       value: costBreakdown.cadCreationCost,
       description: 'Design and modeling',
       color: 'text-cyan-600'
     },
     {
-      label: 'Fixed Cost',
-      value: costBreakdown.constantCost,
+      label: 'Additional',
+      value: costBreakdown.additionalCost,
       description: 'Standard $25 fee',
       color: 'text-gray-600'
     }
@@ -218,15 +230,16 @@ export const CostBreakdownDrawer: React.FC<CostBreakdownDrawerProps> = ({
             <div className="space-y-2">
               <h4 className="text-sm font-medium text-muted-foreground">Cost Calculation Formula</h4>
               <div className="text-xs font-mono bg-muted/50 rounded p-3 space-y-1">
-                <div>Diamond + Metal + Labor + Fixed Cost</div>
+                <div>Center Diamond + Side Diamond + Metal + Labor + Fixed Cost</div>
                 <div className="text-muted-foreground">
-                  = {toFixed2(costBreakdown.diamondCost)} + {toFixed2(costBreakdown.metalCost)} + {toFixed2(
-                    costBreakdown.sideStoneCost + 
-                    costBreakdown.centerStoneCost + 
+                  = {toFixed2(costBreakdown.centerStoneDiamond)} + {toFixed2(costBreakdown.sideStoneDiamond)} + {toFixed2(costBreakdown.metalCost)} + {toFixed2(
+                    costBreakdown.centerStoneLabor + 
+                    costBreakdown.sideStoneLabor + 
                     costBreakdown.polishCost + 
                     costBreakdown.braceletsCost + 
+                    costBreakdown.pendantsCost + 
                     costBreakdown.cadCreationCost
-                  )} + {toFixed2(costBreakdown.constantCost)}
+                  )} + {toFixed2(costBreakdown.additionalCost)}
                 </div>
                 <div className="font-medium">= ${toFixed2(costBreakdown.totalCost)}</div>
               </div>

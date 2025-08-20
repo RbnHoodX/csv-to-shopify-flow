@@ -12,27 +12,33 @@ import type { WeightLookupTable } from "./weight-lookup";
 import { getVariantWeight } from "./weight-lookup";
 
 export interface CostBreakdown {
-  diamondCost: number;
+  centerStoneDiamond: number;
+  sideStoneDiamond: number;
   metalCost: number;
-  sideStoneCost: number;
-  centerStoneCost: number;
+  centerStoneLabor: number;
+  sideStoneLabor: number;
   polishCost: number;
   braceletsCost: number;
+  pendantsCost: number;
   cadCreationCost: number;
-  constantCost: number;
+  additionalCost: number;
   totalCost: number;
   variantGrams: number;
   sku: string;
   pricing: PricingResult;
+  published: boolean;
   details: {
     baseGrams: number;
     weightMultiplier: number;
     metalPricePerGram: number;
-    diamondCarats: number;
-    diamondPricePerCarat: number;
+    centerCarats: number;
+    sideCarats: number;
+    centerPricePerCarat: number;
+    sidePricePerCarat: number;
     sideStoneCount: number;
     hasCenter: boolean;
     isBracelet: boolean;
+    isPendant: boolean;
   };
 }
 
@@ -129,9 +135,31 @@ function calculateVariantGrams(
 }
 
 /**
- * Calculate diamond cost based on scenario
+ * Calculate center stone diamond cost
  */
-function calculateDiamondCost(variant: VariantSeed): {
+function calculateCenterStoneDiamond(variant: VariantSeed, ruleSet: RuleSet | NoStonesRuleSet): {
+  cost: number;
+  carats: number;
+  pricePerCarat: number;
+} {
+  if (variant.scenario !== "Unique+Center" || !variant.centerSize) {
+    return { cost: 0, carats: 0, pricePerCarat: 0 };
+  }
+
+  const centerCt = toNum(variant.centerSize);
+  const pricePerCarat = toNum(variant.inputRowRef["Price Per Carat"] || "150");
+
+  return {
+    cost: centerCt * pricePerCarat,
+    carats: centerCt,
+    pricePerCarat,
+  };
+}
+
+/**
+ * Calculate side stones diamond cost
+ */
+function calculateSideStoneDiamond(variant: VariantSeed, ruleSet: RuleSet | NoStonesRuleSet): {
   cost: number;
   carats: number;
   pricePerCarat: number;
@@ -140,39 +168,12 @@ function calculateDiamondCost(variant: VariantSeed): {
     return { cost: 0, carats: 0, pricePerCarat: 0 };
   }
 
-  let totalCarats = 0;
-  let pricePerCarat = 150; // Default price per carat
-
-  if (variant.scenario === "Unique+Center" && variant.centerSize) {
-    // With center: centerSize + sumSideCt (sum all side columns)
-    const centerCt = toNum(variant.centerSize);
-    const sumSideCt = calculateSumSideCt(variant.inputRowRef);
-    totalCarats = centerCt + sumSideCt;
-  } else {
-    // No center: use TotalCtWeight
-    totalCarats = toNum(
-      variant.inputRowRef["Total Ct Weight"] ||
-        variant.inputRowRef["Total ct"] ||
-        variant.inputRowRef["TotalCt"] ||
-        variant.inputRowRef["Total Carat"] ||
-        "0"
-    );
-  }
-
-  // Get price per carat from input or use default
-  const inputPricePerCarat = toNum(
-    variant.inputRowRef["Price Per Carat"] ||
-      variant.inputRowRef["PricePerCarat"] ||
-      variant.inputRowRef["Diamond Price"] ||
-      ""
-  );
-  if (!isNaN(inputPricePerCarat) && inputPricePerCarat > 0) {
-    pricePerCarat = inputPricePerCarat;
-  }
+  const sideCarats = calculateSumSideCt(variant.inputRowRef);
+  const pricePerCarat = toNum(variant.inputRowRef["Price Per Carat"] || "150");
 
   return {
-    cost: totalCarats * pricePerCarat,
-    carats: totalCarats,
+    cost: sideCarats * pricePerCarat,
+    carats: sideCarats,
     pricePerCarat,
   };
 }
@@ -210,64 +211,87 @@ function calculateMetalCost(
 }
 
 /**
- * Calculate labor costs
+ * Calculate all fixed and labor costs
  */
-function calculateLaborCosts(
+function calculateAllCosts(
   variant: VariantSeed,
   ruleSet: RuleSet | NoStonesRuleSet
 ): {
-  sideStoneCost: number;
-  centerStoneCost: number;
+  centerStoneLabor: number;
+  sideStoneLabor: number;
   polishCost: number;
   braceletsCost: number;
+  pendantsCost: number;
   cadCreationCost: number;
+  additionalCost: number;
   sideStoneCount: number;
   hasCenter: boolean;
   isBracelet: boolean;
+  isPendant: boolean;
 } {
-  const laborMap =
-    "labor" in ruleSet ? ruleSet.labor : new Map<string, number>();
+  const laborMap = "labor" in ruleSet ? ruleSet.labor : new Map<string, number>();
 
-  // Side stone cost
+  // Calculate side stone count for labor
   const sideStoneCount = toNum(
     variant.inputRowRef["Side Stone Count"] ||
       variant.inputRowRef["SideStoneCount"] ||
       variant.inputRowRef["Side Stones"] ||
       "0"
   );
-  const perSideStone = laborMap.get("Per side stone") || 0;
-  const sideStoneCost = sideStoneCount * perSideStone;
+  const perSideStone = laborMap.get("Per side stone") || 1; // $1 per side stone
+  const sideStoneLabor = sideStoneCount * perSideStone;
 
-  // Center stone cost
+  // Center stone labor
   const hasCenter = variant.scenario === "Unique+Center";
-  const perCenter = laborMap.get("Per Center") || 0;
-  const centerStoneCost = hasCenter ? perCenter : 0;
+  const perCenter = laborMap.get("Per Center") || 5; // $5 per center
+  const centerStoneLabor = hasCenter ? perCenter : 0;
 
-  // Polish cost
-  const polishCost = laborMap.get("Polish") || 25;
-
-  // Bracelets cost
+  // Category checks
   const category = trimAll(
     variant.inputRowRef["Category"] ||
       variant.inputRowRef["Type"] ||
-      variant.inputRowRef["Subcategory"] ||
       ""
   ).toLowerCase();
-  const isBracelet = category.includes("bracelet");
-  const braceletsCost = isBracelet ? laborMap.get("Bracelets") || 0 : 0;
+  
+  const subcategory = trimAll(
+    variant.inputRowRef["Subcategory"] ||
+      variant.inputRowRef["Sub Category"] ||
+      ""
+  ).toLowerCase();
 
-  // CAD Creation cost
+  const isBracelet = category.includes("bracelet");
+  const isPendant = category.includes("pendants") || category.includes("pendant");
+
+  // Polish cost: $25 default, $50 for Bridal Sets
+  let polishCost = laborMap.get("Polish") || 25;
+  if (subcategory.includes("bridal")) {
+    polishCost = 50;
+  }
+
+  // Bracelets cost: $125 if Category = "Bracelet"
+  const braceletsCost = isBracelet ? (laborMap.get("Bracelets") || 125) : 0;
+
+  // Pendants cost: $80 if Category = "Pendants"
+  const pendantsCost = isPendant ? 80 : 0;
+
+  // CAD Creation: $20 default
   const cadCreationCost = laborMap.get("CAD Creation") || 20;
 
+  // Additional: $25 default
+  const additionalCost = laborMap.get("Additional") || 25;
+
   return {
-    sideStoneCost,
-    centerStoneCost,
+    centerStoneLabor,
+    sideStoneLabor,
     polishCost,
     braceletsCost,
+    pendantsCost,
     cadCreationCost,
+    additionalCost,
     sideStoneCount,
     hasCenter,
     isBracelet,
+    isPendant,
   };
 }
 
@@ -282,54 +306,60 @@ export function calculateCostBreakdown(
   // Calculate variant grams
   const gramsCalc = calculateVariantGrams(variant, ruleSet);
 
-  // Calculate diamond cost
-  const diamondCalc = calculateDiamondCost(variant);
+  // Calculate diamond costs separately
+  const centerDiamondCalc = calculateCenterStoneDiamond(variant, ruleSet);
+  const sideDiamondCalc = calculateSideStoneDiamond(variant, ruleSet);
 
   // Calculate metal cost
   const metalCalc = calculateMetalCost(variant, gramsCalc.grams, ruleSet);
 
-  // Calculate labor costs
-  const laborCalc = calculateLaborCosts(variant, ruleSet);
-
-  // Constant cost
-  const constantCost = 25;
+  // Calculate all other costs
+  const costsCalc = calculateAllCosts(variant, ruleSet);
 
   // Total cost
   const totalCost =
-    diamondCalc.cost +
+    centerDiamondCalc.cost +
+    sideDiamondCalc.cost +
     metalCalc.cost +
-    laborCalc.sideStoneCost +
-    laborCalc.centerStoneCost +
-    laborCalc.polishCost +
-    laborCalc.braceletsCost +
-    laborCalc.cadCreationCost +
-    constantCost;
+    costsCalc.centerStoneLabor +
+    costsCalc.sideStoneLabor +
+    costsCalc.polishCost +
+    costsCalc.braceletsCost +
+    costsCalc.pendantsCost +
+    costsCalc.cadCreationCost +
+    costsCalc.additionalCost;
 
   // Calculate pricing
   const pricing = calculatePricing(totalCost, variant.inputRowRef, ruleSet);
 
   return {
-    diamondCost: diamondCalc.cost,
+    centerStoneDiamond: centerDiamondCalc.cost,
+    sideStoneDiamond: sideDiamondCalc.cost,
     metalCost: metalCalc.cost,
-    sideStoneCost: laborCalc.sideStoneCost,
-    centerStoneCost: laborCalc.centerStoneCost,
-    polishCost: laborCalc.polishCost,
-    braceletsCost: laborCalc.braceletsCost,
-    cadCreationCost: laborCalc.cadCreationCost,
-    constantCost,
+    centerStoneLabor: costsCalc.centerStoneLabor,
+    sideStoneLabor: costsCalc.sideStoneLabor,
+    polishCost: costsCalc.polishCost,
+    braceletsCost: costsCalc.braceletsCost,
+    pendantsCost: costsCalc.pendantsCost,
+    cadCreationCost: costsCalc.cadCreationCost,
+    additionalCost: costsCalc.additionalCost,
     totalCost,
     variantGrams: gramsCalc.grams,
     sku,
     pricing,
+    published: true, // TRUE for every row
     details: {
       baseGrams: gramsCalc.baseGrams,
       weightMultiplier: gramsCalc.weightMultiplier,
       metalPricePerGram: metalCalc.pricePerGram,
-      diamondCarats: diamondCalc.carats,
-      diamondPricePerCarat: diamondCalc.pricePerCarat,
-      sideStoneCount: laborCalc.sideStoneCount,
-      hasCenter: laborCalc.hasCenter,
-      isBracelet: laborCalc.isBracelet,
+      centerCarats: centerDiamondCalc.carats,
+      sideCarats: sideDiamondCalc.carats,
+      centerPricePerCarat: centerDiamondCalc.pricePerCarat,
+      sidePricePerCarat: sideDiamondCalc.pricePerCarat,
+      sideStoneCount: costsCalc.sideStoneCount,
+      hasCenter: costsCalc.hasCenter,
+      isBracelet: costsCalc.isBracelet,
+      isPendant: costsCalc.isPendant,
     },
   };
 }

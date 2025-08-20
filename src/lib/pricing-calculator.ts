@@ -118,11 +118,14 @@ export function calculatePricing(
   }
 
   // Calculate prices using business rules
-  // Variant Price: (Cost per item * Markup Factor) - 0.01
-  const variantPrice = Math.max(0, (cost * multiplier) - 0.01);
+  // Variant Price: (Cost per item * Markup Factor), then force .99 ending
+  const basePrice = cost * multiplier;
+  const variantPrice = Math.floor(basePrice) + 0.99;
   
-  // Compare At Price: Higher "original" price (Cost per item * 4 or 5)
-  const compareAtPrice = cost * (multiplier >= 2.5 ? 5 : 4);
+  // Compare At Price: price × random(2.9, 3.3), then round up to next hundred
+  const randomMultiplier = 2.9 + Math.random() * (3.3 - 2.9);
+  const compareAtBase = variantPrice * randomMultiplier;
+  const compareAtPrice = Math.ceil(compareAtBase / 100) * 100;
 
   return {
     cost,

@@ -78,14 +78,16 @@ export interface ShopifyRow {
   'Product Type': string;
   'Core Number': string;
   Category: string;
-  'Diamond Cost': string;
+  'Center Stone Diamond': string;
+  'Side Stones Diamond': string;
   'Metal Cost': string;
-  'Side Stone': string;
-  'Center Stone': string;
+  'Center Stone Labor': string;
+  'Side Stones Labor': string;
   Polish: string;
   Bracelets: string;
+  Pendants: string;
   'CAD Creation': string;
-  '25$': string;
+  Additional: string;
   'Title (duplicate)': string;
   'Description (duplicate)': string;
 }
@@ -421,14 +423,15 @@ export function generateShopifyRowsWithCosts(
       const costBreakdown = ruleSet 
         ? calculateCostBreakdown(variant, ruleSet, sku)
         : {
-            diamondCost: 0, metalCost: 0, sideStoneCost: 0, centerStoneCost: 0,
-            polishCost: 25, braceletsCost: 0, cadCreationCost: 20, constantCost: 25,
-            totalCost: 70, variantGrams: 5, sku,
+            centerStoneDiamond: 0, sideStoneDiamond: 0, metalCost: 0, 
+            centerStoneLabor: 0, sideStoneLabor: 0, polishCost: 25, 
+            braceletsCost: 0, pendantsCost: 0, cadCreationCost: 20, additionalCost: 25,
+            totalCost: 70, variantGrams: 5, sku, published: true,
             pricing: { cost: 70, multiplier: 2.5, variantPrice: 174.99, compareAtPrice: 280, marginSource: 'fallback' as const },
             details: {
               baseGrams: 5, weightMultiplier: 1, metalPricePerGram: 2.5,
-              diamondCarats: 0, diamondPricePerCarat: 0, sideStoneCount: 0,
-              hasCenter: false, isBracelet: false
+              centerCarats: 0, sideCarats: 0, centerPricePerCarat: 0, sidePricePerCarat: 0, 
+              sideStoneCount: 0, hasCenter: false, isBracelet: false, isPendant: false
             }
           };
 
@@ -505,14 +508,16 @@ export function generateShopifyRowsWithCosts(
         Category: isParent ? trimAll(firstVariant.inputRowRef['Category'] || 'Jewelry') : '',
         
         // Cost breakdown fields
-        'Diamond Cost': toFixed2(costBreakdown.diamondCost),
+        'Center Stone Diamond': toFixed2(costBreakdown.centerStoneDiamond),
+        'Side Stones Diamond': toFixed2(costBreakdown.sideStoneDiamond),
         'Metal Cost': toFixed2(costBreakdown.metalCost),
-        'Side Stone': toFixed2(costBreakdown.sideStoneCost),
-        'Center Stone': toFixed2(costBreakdown.centerStoneCost),
+        'Center Stone Labor': toFixed2(costBreakdown.centerStoneLabor),
+        'Side Stones Labor': toFixed2(costBreakdown.sideStoneLabor),
         Polish: toFixed2(costBreakdown.polishCost),
         Bracelets: toFixed2(costBreakdown.braceletsCost),
+        Pendants: toFixed2(costBreakdown.pendantsCost),
         'CAD Creation': toFixed2(costBreakdown.cadCreationCost),
-        '25$': toFixed2(costBreakdown.constantCost),
+        Additional: toFixed2(costBreakdown.additionalCost),
         
         // Duplicate fields per spec
         'Title (duplicate)': isParent ? productInfo.title : '',
@@ -603,14 +608,16 @@ export function shopifyRowsToCSV(rows: ShopifyRow[]): string {
     'Product Type',
     'Core Number',
     'Category',
-    'Diamond Cost',
+    'Center Stone Diamond',
+    'Side Stones Diamond',
     'Metal Cost',
-    'Side Stone',
-    'Center Stone',
+    'Center Stone Labor',
+    'Side Stones Labor',
     'Polish',
     'Bracelets',
+    'Pendants',
     'CAD Creation',
-    '25$',
+    'Additional',
     'Title (duplicate)',
     'Description (duplicate)'
   ];
