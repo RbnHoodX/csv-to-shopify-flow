@@ -5,6 +5,7 @@ import { CSVExport } from "@/components/CSVExport";
 import { DebugPanel } from "@/components/DebugPanel";
 import { InputSummaryTable } from "@/components/InputSummaryTable";
 import { VariantExpansionTable } from "@/components/VariantExpansionTable";
+import { StickyNavigation } from "@/components/StickyNavigation";
 import { useCSVStore } from "@/store/csvStore";
 
 const Index = () => {
@@ -132,6 +133,9 @@ const Index = () => {
           <CSVExport />
         </div>
       </div>
+      
+      {/* Sticky Navigation */}
+      <StickyNavigation />
     </div>
   );
 };

@@ -53,7 +53,7 @@ export const CSVExport: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Main Generation Control Panel */}
-      <Card className="w-full">
+      <Card className="w-full" data-section="generate">
         <CardHeader className="pb-6 bg-gradient-to-r from-emerald-50 to-green-50 border-b">
           <div className="flex items-center justify-between">
             <div className="space-y-3">
