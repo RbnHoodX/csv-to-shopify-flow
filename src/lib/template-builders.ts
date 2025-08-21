@@ -588,13 +588,13 @@ export function buildSeoTitleParent(item: {
     return `${subcategory} - ${core}`;
   }
   
-  // Stones parent: "{minCt}–{maxCt} CT {Shapes} Cut {Lab Grown|Natural} Diamonds - {Subcategory} - {Core}"
+  // Stones parent: "{minCt}-{maxCt} CT {Shapes} Cut {Lab Grown|Natural} Diamonds - {Subcategory} - {Core}"
   const shapesStr = titleJoinShapes(shapes);
   const typeQualifier = type === 'lab' ? 'Lab Grown' : 'Natural';
   
   let title = '';
   if (caratRange && caratRange.minCt !== caratRange.maxCt) {
-    title = `${formatCt2(caratRange.minCt)}–${formatCt2(caratRange.maxCt)} CT `;
+    title = `${formatCt2(caratRange.minCt)}-${formatCt2(caratRange.maxCt)} CT `;
   }
   title += `${shapesStr} Cut ${typeQualifier} Diamonds - ${subcategory} - ${core}`;
   
@@ -686,13 +686,13 @@ export function buildSeoDescriptionParent(item: {
     return `Expertly crafted ${subcategory.toLowerCase()} from PrimeStyle.com. Premium metals with precision craftsmanship.`;
   }
   
-  // Stones parent: short range summary using minCt–maxCt, shapes, and qualifier
+  // Stones parent: short range summary using minCt-maxCt, shapes, and qualifier
   const shapesLower = titleJoinShapes(shapes).toLowerCase().replace(' cut', '');
   const labOrNaturalSingular = type === 'lab' ? 'lab-grown diamond' : 'natural diamond';
   
   let description = '';
   if (caratRange && caratRange.minCt !== caratRange.maxCt) {
-    description = `${formatCt2(caratRange.minCt)}–${formatCt2(caratRange.maxCt)} ct ${shapesLower} ${labOrNaturalSingular} ${subcategory.toLowerCase().replace('s', '')}. Select metal and center options. PrimeStyle quality.`;
+    description = `${formatCt2(caratRange.minCt)}-${formatCt2(caratRange.maxCt)} ct ${shapesLower} ${labOrNaturalSingular} ${subcategory.toLowerCase().replace('s', '')}. Select metal and center options. PrimeStyle quality.`;
   } else {
     description = `${formatCt2(caratRange?.minCt || 0)} ct ${shapesLower} ${labOrNaturalSingular} ${subcategory.toLowerCase().replace('s', '')}. Select metal and center options. PrimeStyle quality.`;
   }
@@ -820,13 +820,13 @@ export function buildImageAltParent(item: {
     return subcategory.toLowerCase();
   }
   
-  // Stones parent: "{minCt}–{maxCt} carat {shapesLower} cut {labOrNaturalSingular} {subcategory}"
+  // Stones parent: "{minCt}-{maxCt} carat {shapesLower} cut {labOrNaturalSingular} {subcategory}"
   const shapesLower = titleJoinShapes(shapes).toLowerCase();
   const labOrNaturalSingular = type === 'lab' ? 'lab-grown diamond' : 'natural diamond';
   
   let alt = '';
   if (caratRange && caratRange.minCt !== caratRange.maxCt) {
-    alt = `${formatCt2(caratRange.minCt)}–${formatCt2(caratRange.maxCt)} carat ${shapesLower} cut ${labOrNaturalSingular} ${subcategory.toLowerCase().replace('s', '')}`;
+    alt = `${formatCt2(caratRange.minCt)}-${formatCt2(caratRange.maxCt)} carat ${shapesLower} cut ${labOrNaturalSingular} ${subcategory.toLowerCase().replace('s', '')}`;
   } else {
     alt = `${formatCt2(caratRange?.minCt || 0)} carat ${shapesLower} cut ${labOrNaturalSingular} ${subcategory.toLowerCase().replace('s', '')}`;
   }
