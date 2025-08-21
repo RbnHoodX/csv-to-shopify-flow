@@ -264,13 +264,13 @@ function formatCt(n: number): string {
 }
 
 /**
- * Helper function to format carat range with uppercase CT
+ * Helper function to format carat range with uppercase CT and two decimals
  */
 function formatCtRange(minCt: number, maxCt: number): string {
   if (minCt === maxCt) {
-    return `${formatCt(minCt)} CT`;
+    return `${formatCt2(minCt)} CT`;
   }
-  return `${formatCt(minCt)}–${formatCt(maxCt)} CT`;
+  return `${formatCt2(minCt)}–${formatCt2(maxCt)} CT`;
 }
 
 /**
@@ -287,11 +287,27 @@ function joinShapes(shapes: string[]): string {
  */
 function bodyTypeQualifier(type: 'lab' | 'natural' | 'no-stones'): string {
   switch (type) {
-    case 'lab': return 'Lab-grown';
-    case 'natural': return 'Natural';
+    case 'lab': return 'lab grown';
+    case 'natural': return 'natural';
     case 'no-stones': return '';
     default: return '';
   }
+}
+
+/**
+ * Helper function to format carat weight with exactly two decimals
+ */
+function formatCt2(n: number): string {
+  return n.toFixed(2);
+}
+
+/**
+ * Helper function to join shapes with title-case and proper separator
+ */
+function titleJoinShapes(shapes: string[]): string {
+  return shapes.map(shape => 
+    shape.charAt(0).toUpperCase() + shape.slice(1).toLowerCase()
+  ).join(' & ');
 }
 
 /**
@@ -321,17 +337,17 @@ export function buildTitle(product: Product): string {
   
   // Get shapes and format with title-case
   const shapes = getUniqueShapesOrdered(variants);
-  const shapesStr = joinShapes(shapes);
+  const shapesStr = titleJoinShapes(shapes);
   
   // Get subcategory
   const subcategory = trimAll(inputRow['Subcategory'] || 'Jewelry');
   
   // Build title following new rules
   if (diamondType === 'Natural') {
-    // NATURAL: include "Natural Diamonds"
+    // NATURAL: include "Natural Diamonds" (capital D)
     return `${caratRange} ${shapesStr} Cut Natural Diamonds - ${subcategory}`;
   } else {
-    // LAB-GROWN: DO NOT include "Lab-Grown" in Title
+    // LAB-GROWN: DO NOT include "Lab-Grown" in Title, but capitalize "Diamonds"
     return `${caratRange} ${shapesStr} Cut Diamonds - ${subcategory}`;
   }
 }
@@ -355,7 +371,7 @@ export function buildBody(product: Product): string {
     }
   }
   
-  // Get title for first line
+  // Get title for first line (EXACT Title, no repetition)
   const title = buildTitle(product);
   
   // Get type qualifier for body text
@@ -364,21 +380,20 @@ export function buildBody(product: Product): string {
   let body = `<div><p><strong>${title}</strong></p><p>`;
   
   if (hasCenter) {
-    // HAS CENTER: Center line + side stone lines
+    // HAS CENTER: Center line + side stone lines in single paragraph
     body += `<strong>Center:</strong> Select center from the options above<br>`;
     
     // List side stones as separate lines in same paragraph
-    const sideStoneGroups = listSideStoneGroups(variants);
+    const sideStoneGroups = listSideStoneGroups(variants, typeQualifier);
     sideStoneGroups.forEach((group, index) => {
       body += `<strong>Side Stones ${index + 1}:</strong> ${group}<br>`;
     });
   } else {
-    // REPEATING-CORE TYPE: List all core weights ascending
+    // REPEATING-CORE TYPE: List all core weights ascending from CORE data only
     const coreWeights = listCoreWeightsAscending(variants);
     coreWeights.forEach((core, index) => {
-      const shapes = getUniqueShapesOrdered([core.variant]);
-      const shapesStr = joinShapes(shapes);
-      body += `At least one ${shapesStr} Cut ${typeQualifier} weighing ${formatCt(core.totalCt)} carat.<br>`;
+      const shapesStr = titleJoinShapes(core.shapes);
+      body += `At least one ${shapesStr} Cut ${typeQualifier} diamonds weighing ${formatCt2(core.totalCt)} carat.<br>`;
     });
   }
   
@@ -389,7 +404,7 @@ export function buildBody(product: Product): string {
 /**
  * List side stone groups for variants with center stones
  */
-function listSideStoneGroups(variants: VariantSeed[]): string[] {
+function listSideStoneGroups(variants: VariantSeed[], typeQualifier: string): string[] {
   const groups: string[] = [];
   const firstVariant = variants[0];
   const inputRow = firstVariant.inputRowRef;
@@ -398,12 +413,13 @@ function listSideStoneGroups(variants: VariantSeed[]): string[] {
   for (let i = 1; i <= 10; i++) {
     const sideCt = toNum(inputRow[`Side ${i} Ct`] || '0');
     const sideShape = trimAll(inputRow[`Side ${i} shape`] || inputRow[`Side ${i} Shape`] || '');
-    const sideType = trimAll(inputRow[`Side ${i} Type`] || inputRow[`Side ${i} type`] || 'diamond');
+    const sideStones = toNum(inputRow[`Side ${i} Stones`] || '0');
     
-    if (sideCt > 0 && sideShape) {
+    if (sideCt > 0 && sideShape && sideStones > 0) {
       const shapeStr = sideShape.charAt(0).toUpperCase() + sideShape.slice(1).toLowerCase();
-      const typeStr = sideType.charAt(0).toUpperCase() + sideType.slice(1).toLowerCase();
-      groups.push(`${sideCt} ${shapeStr} Cut ${typeStr} weighing ${formatCt(sideCt)} carat`);
+      // Use stone COUNT, not weight, followed by total carat
+      // Format: "3 Round Cut natural diamonds weighing 0.30 carat"
+      groups.push(`${sideStones} ${shapeStr} Cut ${typeQualifier} diamonds weighing ${formatCt2(sideCt)} carat`);
     }
   }
   
@@ -412,14 +428,61 @@ function listSideStoneGroups(variants: VariantSeed[]): string[] {
 
 /**
  * List core weights in ascending order for repeating-core items
+ * Uses CORE rows only, not per-variant rows
  */
-function listCoreWeightsAscending(variants: VariantSeed[]): Array<{variant: VariantSeed, totalCt: number}> {
-  return variants
-    .map(variant => ({
-      variant,
-      totalCt: calculateTotalCaratWeight(variant)
-    }))
-    .sort((a, b) => a.totalCt - b.totalCt);
+function listCoreWeightsAscending(variants: VariantSeed[]): Array<{coreNumber: string, totalCt: number, shapes: string[]}> {
+  // Get unique cores from the input data (not from variants)
+  const cores = new Map<string, {coreNumber: string, totalCt: number, shapes: string[]}>();
+  
+  for (const variant of variants) {
+    const inputRow = variant.inputRowRef;
+    const coreNumber = inputRow['coreNumber'] || inputRow['Core Number'] || '';
+    const totalCt = toNum(inputRow['Total Ct Weight'] || '0');
+    
+    // Create unique key based on coreNumber + totalCt to handle multiple cores with same number but different weights
+    const uniqueKey = `${coreNumber}-${totalCt}`;
+    
+    if (!cores.has(uniqueKey)) {
+      // Get shapes for this core from input data
+      const shapes = new Set<string>();
+      
+      // Add center shape if present
+      const centerShape = trimAll(
+        inputRow['Center shape'] ||
+        inputRow['Center Shape'] ||
+        inputRow['CenterShape'] ||
+        inputRow['Shape'] ||
+        ''
+      );
+      
+      if (centerShape) {
+        shapes.add(capitalizeFirst(centerShape));
+      }
+      
+      // Add side shapes from all side stone columns
+      for (let i = 1; i <= 10; i++) {
+        const sideShape = trimAll(
+          inputRow[`Side ${i} shape`] ||
+          inputRow[`Side ${i} Shape`] ||
+          inputRow[`Side ${i}Shape`] ||
+          ''
+        );
+        
+        if (sideShape) {
+          shapes.add(capitalizeFirst(sideShape));
+        }
+      }
+      
+      cores.set(uniqueKey, {
+        coreNumber,
+        totalCt,
+        shapes: Array.from(shapes).sort()
+      });
+    }
+  }
+  
+  // Return cores sorted by total carat weight ascending
+  return Array.from(cores.values()).sort((a, b) => a.totalCt - b.totalCt);
 }
 
 /**
@@ -432,7 +495,7 @@ function generateTCWBucketTags(minTCW: number, maxTCW: number): string[] {
   
   for (let bucket = startBucket; bucket < endBucket; bucket++) {
     const nextBucket = bucket + 1;
-    tags.push(`tcw_${bucket.toFixed(2)} CT - ${nextBucket.toFixed(2)} CT`);
+    tags.push(`tcw_${formatCt2(bucket)} CT - ${formatCt2(nextBucket)} CT`);
   }
   
   return tags;
@@ -512,12 +575,12 @@ export function buildSeoTitleParent(item: {
   }
   
   // Stones parent: "<[minCt–maxCt] CT> <Shapes> Cut <lab grown|natural> diamonds - <Subcategory> - <CoreNumber>"
-  const shapesStr = joinShapes(shapes);
+  const shapesStr = titleJoinShapes(shapes);
   const typeQualifier = bodyTypeQualifier(type);
   
   let title = '';
   if (caratRange && caratRange.minCt !== caratRange.maxCt) {
-    title = `${formatCt(caratRange.minCt)}–${formatCt(caratRange.maxCt)} CT `;
+    title = `${formatCt2(caratRange.minCt)}–${formatCt2(caratRange.maxCt)} CT `;
   }
   title += `${shapesStr} Cut ${typeQualifier} diamonds - ${subcategory} - ${coreNumber}`;
   
@@ -543,10 +606,10 @@ export function buildSeoTitleVariant(item: {
   }
   
   // Stones variant: "<totalCt> CT <Shapes> Cut <lab grown|natural> diamonds - <Subcategory> - <SKU>"
-  const shapesStr = joinShapes(shapes);
+  const shapesStr = titleJoinShapes(shapes);
   const typeQualifier = bodyTypeQualifier(type);
   
-  return `${formatCt(totalCt)} CT ${shapesStr} Cut ${typeQualifier} diamonds - ${subcategory} - ${sku}`;
+  return `${formatCt2(totalCt)} CT ${shapesStr} Cut ${typeQualifier} diamonds - ${subcategory} - ${sku}`;
 }
 
 /**
@@ -565,14 +628,14 @@ export function buildSeoDescriptionParent(item: {
   }
   
   // Stones parent: brief range summary using minCt→maxCt, shapes, and type
-  const shapesStr = joinShapes(shapes);
+  const shapesStr = titleJoinShapes(shapes);
   const typeQualifier = bodyTypeQualifier(type);
   
   let description = '';
   if (caratRange && caratRange.minCt !== caratRange.maxCt) {
-    description = `${formatCt(caratRange.minCt)} to ${formatCt(caratRange.maxCt)} carat `;
+    description = `${formatCt2(caratRange.minCt)} to ${formatCt2(caratRange.maxCt)} carat `;
   }
-  description += `${shapesStr.toLowerCase()} cut ${typeQualifier} diamond ${subcategory.toLowerCase()}. Premium quality with expert craftsmanship.`;
+  description += `${shapesStr.toLowerCase()} cut ${typeQualifier} diamonds ${subcategory.toLowerCase()}. Premium quality with expert craftsmanship.`;
   
   // Ensure within character limit
   if (description.length > charLimit) {
@@ -599,18 +662,18 @@ export function buildSeoDescriptionVariant(item: {
   const { type, subcategory, totalCt, shapes, metal, quality } = item;
   
   if (type === 'no-stones') {
-    const description = `${formatCt(totalCt)}mm ${subcategory.toLowerCase()} in ${metal}. Expertly crafted jewelry with premium metals. Perfect for everyday wear.`;
+    const description = `${formatCt2(totalCt)}mm ${subcategory.toLowerCase()} in ${metal}. Expertly crafted jewelry with premium metals. Perfect for everyday wear.`;
     return {
       seoDescription: description,
-      seoDescriptionPrompt: `Write a concise SEO meta description (<= ${charLimit} chars) for a ${subcategory}. Include: ${formatCt(totalCt)}mm width, ${metal} metal. Tone: elegant, factual, no fluff, no SKU, no price, sentence case.`
+      seoDescriptionPrompt: `Write a concise SEO meta description (<= ${charLimit} chars) for a ${subcategory}. Include: ${formatCt2(totalCt)}mm width, ${metal} metal. Tone: elegant, factual, no fluff, no SKU, no price, sentence case.`
     };
   }
   
   // Stones variant: based on metal, totalCt, quality, shapes, type, subcategory
-  const shapesStr = joinShapes(shapes);
+  const shapesStr = titleJoinShapes(shapes);
   const typeQualifier = bodyTypeQualifier(type);
   
-  const description = `${formatCt(totalCt)} carat ${shapesStr.toLowerCase()} cut ${typeQualifier} ${subcategory.toLowerCase()}. Metal: ${metal}. Quality: ${quality}. Premium ${typeQualifier} diamonds with expert craftsmanship.`;
+  const description = `${formatCt2(totalCt)} carat ${shapesStr.toLowerCase()} cut ${typeQualifier} diamonds ${subcategory.toLowerCase()}. Metal: ${metal}. Quality: ${quality}. Premium ${typeQualifier} diamonds with expert craftsmanship.`;
   
   // Ensure within character limit
   let finalDescription = description;
@@ -618,7 +681,7 @@ export function buildSeoDescriptionVariant(item: {
     finalDescription = finalDescription.substring(0, charLimit - 3) + '...';
   }
   
-  const prompt = `Write a concise SEO meta description (<= ${charLimit} chars) for a ${subcategory}. Include: ${formatCt(totalCt)} CT, ${shapesStr} cut, ${typeQualifier} diamonds, ${quality}, ${metal}. Tone: elegant, factual, no fluff, no SKU, no price, sentence case.`;
+  const prompt = `Write a concise SEO meta description (<= ${charLimit} chars) for a ${subcategory}. Include: ${formatCt2(totalCt)} CT, ${shapesStr} cut, ${typeQualifier} diamonds, ${quality}, ${metal}. Tone: elegant, factual, no fluff, no SKU, no price, sentence case.`;
   
   return {
     seoDescription: finalDescription,
@@ -640,11 +703,11 @@ export function buildImageAltVariant(item: {
   const { type, subcategory, totalCt, shapes, metal, sku } = item;
   
   if (type === 'no-stones') {
-    return `Alt text (<=${charLimit} chars): ${formatCt(totalCt)}mm ${subcategory.toLowerCase()} in ${metal}, SKU ${sku}.`;
+    return `Alt text (<=${charLimit} chars): ${formatCt2(totalCt)}mm ${subcategory.toLowerCase()} in ${metal}, SKU ${sku}.`;
   }
   
-  const shapesStr = joinShapes(shapes);
+  const shapesStr = titleJoinShapes(shapes);
   const typeQualifier = bodyTypeQualifier(type);
   
-  return `Alt text (<=${charLimit} chars): ${formatCt(totalCt)} CT ${shapesStr.toLowerCase()} cut ${typeQualifier} diamonds ${subcategory.toLowerCase()} in ${metal}, SKU ${sku}.`;
+  return `Alt text (<=${charLimit} chars): ${formatCt2(totalCt)} CT ${shapesStr.toLowerCase()} cut ${typeQualifier} diamonds ${subcategory.toLowerCase()} in ${metal}, SKU ${sku}.`;
 }
