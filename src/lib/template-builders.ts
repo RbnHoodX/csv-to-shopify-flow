@@ -207,7 +207,7 @@ function generateMarketingCopy(product: Product): string {
   
   // Add marketing paragraph
   const typeQualifier = diamondType === 'Natural' ? 'natural' : 'labgrown';
-  html += `<p><span>Experience a true luxury with our ${caratRange} ${shapesStr} Cut ${typeQualifier} ${stoneTypes} – ${subcategory}. This ${subcategory} crafted with ${caratRange} ${typeQualifier} ${stoneTypes}. Select your choice of precious metal between 14 Karat, 18 Karat Yellow, White and Rose Gold OR Platinum. Shine with uniqueness with Primestyle diamond ${subcategory}.</span></p>`;
+  html += `<p><span>Experience a true luxury with our ${caratRange} ${shapesStr} Cut ${typeQualifier} ${stoneTypes} - ${subcategory}. This ${subcategory} crafted with ${caratRange} ${typeQualifier} ${stoneTypes}. Select your choice of precious metal between 14 Karat, 18 Karat Yellow, White and Rose Gold OR Platinum. Shine with uniqueness with Primestyle diamond ${subcategory}.</span></p>`;
   
   // Add bullet points
   html += '<ul>';
@@ -270,7 +270,7 @@ function formatCtRange(minCt: number, maxCt: number): string {
   if (minCt === maxCt) {
     return `${formatCt2(minCt)} CT`;
   }
-  return `${formatCt2(minCt)}–${formatCt2(maxCt)} CT`;
+  return `${formatCt2(minCt)}-${formatCt2(maxCt)} CT`;
 }
 
 /**
@@ -574,13 +574,13 @@ export function buildSeoTitleParent(item: {
     return `${subcategory} - ${coreNumber}`;
   }
   
-  // Stones parent: "<[minCt–maxCt] CT> <Shapes> Cut <lab grown|natural> diamonds - <Subcategory> - <CoreNumber>"
+  // Stones parent: "<[minCt-maxCt] CT> <Shapes> Cut <lab grown|natural> diamonds - <Subcategory> - <CoreNumber>"
   const shapesStr = titleJoinShapes(shapes);
   const typeQualifier = bodyTypeQualifier(type);
   
   let title = '';
   if (caratRange && caratRange.minCt !== caratRange.maxCt) {
-    title = `${formatCt2(caratRange.minCt)}–${formatCt2(caratRange.maxCt)} CT `;
+    title = `${formatCt2(caratRange.minCt)}-${formatCt2(caratRange.maxCt)} CT `;
   }
   title += `${shapesStr} Cut ${typeQualifier} diamonds - ${subcategory} - ${coreNumber}`;
   
