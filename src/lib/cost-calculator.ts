@@ -274,79 +274,7 @@ function priceCenter(
   return parseFloat(toFixed2(totalCost));
 }
 
-/**
- * Group side stones by (shape, bracket, quality-or-lab), sum weights per group
- * Sides: group by (shape, bracket, quality-or-lab), sum weights per group, cost = total_ct * price_per_ct, then sum groups
- */
-function priceSideStones(
-  sideStones: Array<{ shape: string; weight: number; type: string; quality?: string }>,
-  rules: RuleSet
-): number {
-  if (sideStones.length === 0) return 0;
-  
-  // Group side stones by (shape, bracket, quality-or-lab)
-  // The key insight: stones with the same shape, type, quality, and that fall into the same size bracket
-  // should be grouped together and priced as a single unit
-  const groups = new Map<string, { shape: string; totalWeight: number; type: string; quality?: string }>();
-  
-  for (const stone of sideStones) {
-    const normalizedShape = normalizeShape(stone.shape);
-    const normalizedType = stone.type.toLowerCase();
-    const normalizedQuality = stone.quality ? normalizeQuality(stone.quality) : undefined;
-    
-    // Create group key: shape-type-quality
-    // The bracket will be determined when we price the group based on total weight
-    const groupKey = `${normalizedShape}-${normalizedType}-${normalizedQuality || 'lab'}`;
-    
-    if (groups.has(groupKey)) {
-      // Add weight to existing group
-      groups.get(groupKey)!.totalWeight += stone.weight;
-    } else {
-      // Create new group
-      groups.set(groupKey, {
-        shape: normalizedShape,
-        totalWeight: stone.weight,
-        type: normalizedType,
-        quality: normalizedQuality
-      });
-    }
-  }
-  
-  // Calculate cost for each group: total_ct * price_per_ct
-  // Each group is priced based on its TOTAL weight, which determines the bracket
-  // This is the key difference from center stone pricing:
-  // - Center stone: priced individually based on its own weight
-  // - Side stones: grouped by type/shape/quality, then priced based on total group weight
-  let totalSideCost = 0;
-  
-  for (const [groupKey, group] of groups) {
-    try {
-      // Price the group based on its total weight (this determines the bracket)
-      const pricePerCarat = getPricePerCarat({
-        type: group.type,
-        shape: group.shape,
-        weight: group.totalWeight, // Use total weight to determine bracket
-        quality: group.quality
-      }, rules);
-      
-      const groupCost = group.totalWeight * pricePerCarat;
-      totalSideCost += groupCost;
-      
-      console.log(`💎 SIDE STONE GROUP: ${groupKey}`, {
-        totalWeight: group.totalWeight,
-        pricePerCarat,
-        groupCost: toFixed2(groupCost),
-        bracket: `weight ${group.totalWeight}ct → $${pricePerCarat}/ct`
-      });
-    } catch (error) {
-      console.error(`💎 Side stone group pricing failed for ${groupKey}:`, error);
-      throw error;
-    }
-  }
-  
-  console.log(`💎 TOTAL SIDE STONE COST: $${toFixed2(totalSideCost)}`);
-  return parseFloat(toFixed2(totalSideCost));
-}
+// REMOVED: priceSideStones function - replaced with direct calculation in calculateSideStoneDiamond
 
 /**
  * Compute total costs with proper separation of concerns
@@ -475,7 +403,9 @@ function calculateCenterStoneDiamond(
 }
 
 /**
- * Calculate side stones diamond cost using proper grouping
+ * Calculate side stones diamond cost using INPUT row data
+ * ALGORITHM: Extract side groups i=1..10 where Side i Ct > 0
+ * For each group: use per-stone carat for bracket, price group individually
  */
 function calculateSideStoneDiamond(
   variant: VariantSeed, 
@@ -486,59 +416,94 @@ function calculateSideStoneDiamond(
     return { cost: 0, carats: 0, pricePerCarat: 0 };
   }
 
-  // Collect all side stones from input table
-  const sideStones: Array<{ shape: string; weight: number; type: string; quality?: string }> = [];
+  const inputRow = variant.inputRowRef;
+  let totalSideCost = 0;
+  let totalSideCarats = 0;
   
+  console.log(`💎 SIDE STONE CALCULATION for ${variant.core}:`);
+  
+  // Extract side groups i = 1..10 where Side i Ct > 0
   for (let i = 1; i <= 10; i++) {
-    const sideCt = toNum(variant.inputRowRef[`Side ${i} Ct`] || '0');
-    if (sideCt > 0) {
-      const sideShape = normalizeShape(
-        variant.inputRowRef[`Side ${i} shape`] ||
-        variant.inputRowRef[`Side ${i} Shape`] ||
-        'Round' // Default to Round for side stones
-      );
-      
-      const stoneType = variant.inputRowRef.diamondsType?.toLowerCase().includes('natural') 
-        ? 'natural' 
-        : 'lab';
-      
-      const quality = stoneType === 'natural' ? (variant.quality || 'GH') : undefined;
-      
-      sideStones.push({
-        shape: sideShape,
-        weight: sideCt,
-        type: stoneType,
-        quality
-      });
+    const sideCt = toNum(inputRow[`Side ${i} Ct`] || '0');
+    if (sideCt <= 0) continue;
+    
+    const stoneCount = toNum(inputRow[`Side ${i} Stones`] || '0');
+    const stoneSizes = inputRow[`Stone sizes ${i}`] || '';
+    const sideShape = normalizeShape(
+      inputRow[`Side ${i} shape`] ||
+      inputRow[`Side ${i} Shape`] ||
+      'Round' // Default to Round for side stones
+    );
+    
+         // Determine stone type and quality from variant (same as center stone)
+     const stoneType = variant.inputRowRef.diamondsType?.toLowerCase().includes('natural') 
+       ? 'natural' 
+       : 'lab';
+     const quality = stoneType === 'natural' ? (variant.quality || 'GH') : undefined;
+    
+    // Step 1: Calculate per-stone carat
+    let perStoneCt: number;
+    if (stoneSizes && stoneSizes.trim()) {
+      perStoneCt = parseFloat(stoneSizes);
+    } else if (stoneCount > 0) {
+      perStoneCt = sideCt / stoneCount;
+    } else {
+      console.warn(`⚠️ Side ${i}: No stone count or sizes, skipping`);
+      continue;
     }
+    
+    // Step 2: Validate math: |(perStoneCt * count) - sideCt| ≤ 0.01
+    const expectedTotal = perStoneCt * stoneCount;
+    const difference = Math.abs(expectedTotal - sideCt);
+    if (difference > 0.01) {
+      console.warn(`⚠️ Side ${i}: Math validation failed! Expected: ${expectedTotal.toFixed(3)}, Actual: ${sideCt.toFixed(3)}, Diff: ${difference.toFixed(3)}`);
+    }
+    
+    // Step 3: Find bracket using per-stone carat (INCLUSIVE bounds)
+    let pricePerCt: number;
+    try {
+      pricePerCt = getPricePerCarat({
+        type: stoneType,
+        shape: sideShape,
+        weight: perStoneCt, // Use per-stone carat for bracket determination
+        quality: quality
+      }, ruleSet);
+    } catch (error) {
+      console.error(`💎 Side ${i} pricing failed:`, error);
+      throw error;
+    }
+    
+    // Step 4: Calculate group cost
+    const groupCost = sideCt * pricePerCt;
+    totalSideCost += groupCost;
+    totalSideCarats += sideCt;
+    
+    console.log(`💎 Side ${i} Group:`, {
+      shape: sideShape,
+      type: stoneType,
+      quality: quality || 'N/A',
+      perStoneCt: perStoneCt.toFixed(3),
+      stoneCount,
+      totalCt: sideCt.toFixed(3),
+      pricePerCt,
+      groupCost: toFixed2(groupCost),
+      bracket: `per-stone ${perStoneCt.toFixed(3)}ct → $${pricePerCt}/ct`
+    });
   }
   
-  if (sideStones.length === 0) {
+  if (totalSideCarats === 0) {
     return { cost: 0, carats: 0, pricePerCarat: 0 };
   }
   
-  try {
-    console.log(`💎 SIDE STONE CALCULATION for ${variant.core}:`, {
-      sideStonesCount: sideStones.length,
-      totalCarats: sideStones.reduce((sum, stone) => sum + stone.weight, 0)
-    });
-    
-    const totalCost = priceSideStones(sideStones, ruleSet);
-    const totalCarats = sideStones.reduce((sum, stone) => sum + stone.weight, 0);
-    const avgPricePerCarat = totalCost / totalCarats;
-    
-    return {
-      cost: totalCost,
-      carats: totalCarats,
-      pricePerCarat: avgPricePerCarat,
-    };
-  } catch (error) {
-    if (error instanceof CostLookupError) {
-      error.details.productId = variant.core || 'unknown';
-      throw error;
-    }
-    throw error;
-  }
+  const avgPricePerCarat = totalSideCost / totalSideCarats;
+  
+  console.log(`💎 TOTAL SIDE STONE COST: $${toFixed2(totalSideCost)} (${totalSideCarats.toFixed(3)} ct × $${avgPricePerCarat.toFixed(2)}/ct avg)`);
+  
+  return {
+    cost: parseFloat(toFixed2(totalSideCost)),
+    carats: totalSideCarats,
+    pricePerCarat: avgPricePerCarat,
+  };
 }
 
 /**
@@ -880,11 +845,12 @@ export function testCostCalculatorGuardrails() {
   console.log('   - Natural diamonds require quality specification');
   console.log('   - Lab-grown diamonds ignore quality field');
   
-  // Test 3: Side stone grouping
-  console.log('✅ Test 3: Side stone grouping implemented');
-  console.log('   - Group by (shape, bracket, quality-or-lab)');
-  console.log('   - Sum weights per group');
-  console.log('   - Cost = total_ct * price_per_ct, then sum groups');
+  // Test 3: Side stone calculation
+  console.log('✅ Test 3: Side stone calculation implemented');
+  console.log('   - Read side groups from INPUT row (Side i Ct, Stone sizes i, Side i Stones, Side i shape)');
+  console.log('   - Use per-stone carat for bracket determination (not total group carat)');
+  console.log('   - Price each group individually: groupCost = sideCt * pricePerCt');
+  console.log('   - Validate math: |(perStoneCt * count) - sideCt| ≤ 0.01');
   
   // Test 4: Center stone pricing
   console.log('✅ Test 4: Center stone pricing');
