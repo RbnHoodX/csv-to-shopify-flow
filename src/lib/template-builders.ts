@@ -403,7 +403,10 @@ export function buildBody(product: Product): string {
     const coreWeights = listCoreWeightsAscending(variants);
     coreWeights.forEach((core, index) => {
       const shapesStr = titleJoinShapes(core.shapes);
-      body += `At least one ${shapesStr} Cut ${typeQualifier} diamonds weighing ${formatCt2(core.totalCt)} carat.<br>`;
+      // Transform from "At least one Round Cut natural diamonds weighing 0.35 carat"
+      // To: "0.35 Carat: 1 round cut natural diamonds weighing 0.35 Carat"
+      const caratWeight = formatCt2(core.totalCt);
+      body += `<strong>${caratWeight} Carat:</strong> <span>1 ${shapesStr.toLowerCase()} cut ${typeQualifier} diamonds weighing ${caratWeight} Carat</span><br>`;
     });
   }
   
