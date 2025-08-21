@@ -95,27 +95,117 @@ function extractLookupTable(
  */
 function extractMarginTable(
   rows: Record<string, string>[],
-  startRowIndex: number
+  headers: string[]
 ): Array<{ begin: number; end?: number; m: number }> {
   const margins: Array<{ begin: number; end?: number; m: number }> = [];
+  
+  console.log(`[extractMarginTable] Starting extraction`);
+  console.log(`[extractMarginTable] Total rows to process: ${rows.length}`);
+  console.log(`[extractMarginTable] Available headers:`, headers);
 
-  for (let i = startRowIndex; i < rows.length; i++) {
+  // Find the "Margin" header column
+  const marginHeaderIndex = findColumnIndex(headers, "margin");
+  
+  if (marginHeaderIndex === -1) {
+    console.error(`[extractMarginTable] Could not find "Margin" header in the table`);
+    console.error(`[extractMarginTable] Available headers:`, headers);
+    return margins;
+  }
+
+  console.log(`[extractMarginTable] Found "Margin" header at column index: ${marginHeaderIndex}`);
+
+  // The margin table starts from the Margin column and extends to the right
+  // Look for the sub-headers in the rows to identify the table structure
+  let rangeBeginIndex = -1;
+  let rangeEndIndex = -1;
+  let multiplierIndex = -1;
+
+  // Search for the sub-headers in all rows to find the margin table structure
+  for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
-    const beginStr = trimAll(row["Range Begin"] || row["Begin"] || "");
-    const endStr = trimAll(row["Range End"] || row["End"] || "");
-    const multiplierStr = trimAll(row["Multiplier"] || row["M"] || "");
+    const rowValues = Object.values(row);
+    
+    // Check if this row contains the margin table sub-headers
+    for (let col = marginHeaderIndex; col < Math.min(marginHeaderIndex + 5, rowValues.length); col++) {
+      const cellValue = trimAll(rowValues[col] || "").toLowerCase();
+      
+      if (cellValue.includes("range begin") || cellValue.includes("begin")) {
+        rangeBeginIndex = col;
+        console.log(`[extractMarginTable] Found "Range Begin" at column ${col}: "${rowValues[col]}"`);
+      } else if (cellValue.includes("range end") || cellValue.includes("end")) {
+        rangeEndIndex = col;
+        console.log(`[extractMarginTable] Found "Range End" at column ${col}: "${rowValues[col]}"`);
+      } else if (cellValue.includes("multiplier") || cellValue.includes("m")) {
+        multiplierIndex = col;
+        console.log(`[extractMarginTable] Found "Multiplier" at column ${col}: "${rowValues[col]}"`);
+      }
+    }
+    
+    // If we found all three columns, we've found the header row
+    if (rangeBeginIndex !== -1 && multiplierIndex !== -1) {
+      console.log(`[extractMarginTable] Found margin table headers at row ${i}`);
+      console.log(`[extractMarginTable] Column indices: begin=${rangeBeginIndex}, end=${rangeEndIndex}, multiplier=${multiplierIndex}`);
+      
+      // Start extracting data from the next row
+      const dataStartRow = i + 1;
+      console.log(`[extractMarginTable] Starting data extraction from row ${dataStartRow}`);
+      
+      // Extract margin data
+      for (let j = dataStartRow; j < rows.length; j++) {
+        const dataRow = rows[j];
+        const dataRowValues = Object.values(dataRow);
+        
+        const beginStr = trimAll(dataRowValues[rangeBeginIndex] || "");
+        const endStr = rangeEndIndex >= 0 ? trimAll(dataRowValues[rangeEndIndex] || "") : "";
+        const multiplierStr = trimAll(dataRowValues[multiplierIndex] || "");
 
-    const begin = toNum(beginStr);
-    const end = endStr ? toNum(endStr) : undefined;
-    const m = toNum(multiplierStr);
+        console.log(`[extractMarginTable] Row ${j}:`, {
+          beginStr,
+          endStr,
+          multiplierStr
+        });
 
-    if (!isNaN(begin) && !isNaN(m)) {
-      margins.push({ begin, end: isNaN(end!) ? undefined : end, m });
-    } else if (!beginStr && !endStr && !multiplierStr) {
-      break;
+        const begin = toNum(beginStr);
+        const end = endStr ? toNum(endStr) : undefined;
+        const m = toNum(multiplierStr);
+
+        console.log(`[extractMarginTable] Parsed values:`, {
+          begin,
+          end,
+          m,
+          beginValid: !isNaN(begin),
+          endValid: end === undefined || !isNaN(end),
+          mValid: !isNaN(m)
+        });
+
+        if (!isNaN(begin) && !isNaN(m)) {
+          const marginEntry = { begin, end: isNaN(end!) ? undefined : end, m };
+          margins.push(marginEntry);
+          console.log(`[extractMarginTable] Added margin entry:`, marginEntry);
+        } else if (!beginStr && !endStr && !multiplierStr) {
+          console.log(`[extractMarginTable] Empty row detected at index ${j}, stopping extraction`);
+          break;
+        } else {
+          console.log(`[extractMarginTable] Skipping invalid row at index ${j}`);
+        }
+      }
+      
+      break; // We've found and processed the margin table
     }
   }
 
+  if (rangeBeginIndex === -1 || multiplierIndex === -1) {
+    console.error(`[extractMarginTable] Could not find required margin table columns`);
+    console.error(`[extractMarginTable] Need columns for begin and multiplier, found:`, {
+      rangeBeginIndex,
+      rangeEndIndex,
+      multiplierIndex
+    });
+  }
+
+  console.log(`[extractMarginTable] Extraction complete. Total margins found: ${margins.length}`);
+  console.log(`[extractMarginTable] Final margins array:`, margins);
+  
   return margins;
 }
 
@@ -448,7 +538,7 @@ export function extractRuleSets(ruleRows: Record<string, string>[]): RuleSet {
 
   // Labor and margins tables (approximate positions)
   const laborTable = extractLaborTable(ruleRows, tableStartRow + 20);
-  const marginTable = extractMarginTable(ruleRows, tableStartRow + 30);
+  const marginTable = extractMarginTable(ruleRows, headers);
   
   // Diamond price table (columns A-F after the variants section)
   const diamondPrices = extractDiamondPricesTable(ruleRows);
