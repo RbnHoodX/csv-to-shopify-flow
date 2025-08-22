@@ -519,32 +519,6 @@ export function buildBody(product: Product): string {
     });
   }
   
-  body += `</p>`;
-  
-  // Add extra paragraph with 15 unique, engaging product description templates
-  const descriptionTemplates = [
-    `This ${getCaratRange(variants)} ${getUniqueShapesOrdered(variants).join(' & ')} Cut ${diamondType === 'Natural' ? 'Natural' : 'Lab Grown'} diamonds in 14KT, 18KT & Platinum${hasCenter ? ` with a beautiful center stone` : ''} showcases PrimeStyle's commitment to exceptional craftsmanship. The ${diamondType === 'Natural' ? 'natural' : 'lab-grown'} diamonds are carefully selected for their brilliance, while the premium metal setting ensures durability and timeless elegance. Perfect for marking life's most precious moments, this piece represents the perfect balance of luxury and accessibility.`,
-    `Discover the perfect blend of sophistication and value in this ${getCaratRange(variants)} ${getUniqueShapesOrdered(variants).join(' & ')} Cut ${diamondType === 'Natural' ? 'Natural' : 'Lab Grown'} diamonds${hasCenter ? ` featuring a stunning center stone` : ''}. Set in premium 14KT, 18KT & Platinum, every facet reflects PrimeStyle's dedication to quality. The ${diamondType === 'Natural' ? 'natural' : 'lab-grown'} diamonds offer stunning sparkle, making this piece ideal for both everyday wear and special occasions. A testament to affordable luxury.`,
-    `Handcrafted with precision, this ${getCaratRange(variants)} ${getUniqueShapesOrdered(variants).join(' & ')} Cut ${diamondType === 'Natural' ? 'Natural' : 'Lab Grown'} diamonds${hasCenter ? ` with an exquisite center stone` : ''} in ${getMetalOptions(variants).toLowerCase()} embodies PrimeStyle's legacy of excellence. The ${diamondType === 'Natural' ? 'natural' : 'lab-grown'} diamonds are ethically sourced and expertly cut for maximum brilliance. Whether you're celebrating love or treating yourself, this piece delivers exceptional beauty without compromising on quality or price.`,
-    `Elevate your jewelry collection with this stunning ${getCaratRange(variants)} ${getUniqueShapesOrdered(variants).join(' & ')} Cut ${diamondType === 'Natural' ? 'Natural' : 'Lab Grown'} diamonds${hasCenter ? ` featuring a magnificent center stone` : ''}. The ${getMetalOptions(variants).toLowerCase()} setting provides the perfect backdrop for the ${diamondType === 'Natural' ? 'natural' : 'lab-grown'} diamonds to shine. PrimeStyle's master artisans have created a piece that balances elegance with practicality, making it perfect for both formal events and daily wear.`,
-    `Experience luxury redefined with this ${getCaratRange(variants)} ${getUniqueShapesOrdered(variants).join(' & ')} Cut ${diamondType === 'Natural' ? 'Natural' : 'Lab Grown'} diamonds${hasCenter ? ` with a breathtaking center stone` : ''} in ${getMetalOptions(variants).toLowerCase()}. Every detail reflects PrimeStyle's unwavering standards, from the carefully selected ${diamondType === 'Natural' ? 'natural' : 'lab-grown'} diamonds to the precision-crafted setting. This piece offers the perfect combination of beauty, durability, and value for the discerning jewelry lover.`,
-    `Transform your style with this magnificent ${getCaratRange(variants)} ${getUniqueShapesOrdered(variants).join(' & ')} Cut ${diamondType === 'Natural' ? 'Natural' : 'Lab Grown'} diamonds${hasCenter ? ` featuring an extraordinary center stone` : ''}. Set in ${getMetalOptions(variants).toLowerCase()}, the ${diamondType === 'Natural' ? 'natural' : 'lab-grown'} diamonds create a dazzling display of light and brilliance. PrimeStyle's commitment to quality craftsmanship ensures this piece will become a cherished part of your jewelry collection for years to come.`,
-    `Indulge in the artistry of this ${getCaratRange(variants)} ${getUniqueShapesOrdered(variants).join(' & ')} Cut ${diamondType === 'Natural' ? 'Natural' : 'Lab Grown'} diamonds${hasCenter ? ` with a captivating center stone` : ''}. The ${getMetalOptions(variants).toLowerCase()} setting enhances the natural beauty of the ${diamondType === 'Natural' ? 'natural' : 'lab-grown'} diamonds, creating a piece that's both sophisticated and wearable. PrimeStyle's attention to detail makes this jewelry perfect for those who appreciate fine craftsmanship without the premium price tag.`,
-    `Celebrate your unique story with this ${getCaratRange(variants)} ${getUniqueShapesOrdered(variants).join(' & ')} Cut ${diamondType === 'Natural' ? 'Natural' : 'Lab Grown'} diamonds${hasCenter ? ` featuring a remarkable center stone` : ''} in ${getMetalOptions(variants).toLowerCase()}. The ${diamondType === 'Natural' ? 'natural' : 'lab-grown'} diamonds are expertly cut to maximize their natural sparkle, while the setting ensures comfort and durability. PrimeStyle delivers exceptional quality that makes every day feel special.`,
-    `Unlock the door to timeless elegance with this ${getCaratRange(variants)} ${getUniqueShapesOrdered(variants).join(' & ')} Cut ${diamondType === 'Natural' ? 'Natural' : 'Lab Grown'} diamonds${hasCenter ? ` with a stunning center stone` : ''}. Crafted in ${getMetalOptions(variants).toLowerCase()}, the ${diamondType === 'Natural' ? 'natural' : 'lab-grown'} diamonds offer stunning brilliance that catches the eye from every angle. PrimeStyle's dedication to excellence makes this piece a smart investment in both beauty and quality.`,
-    `Step into sophistication with this ${getCaratRange(variants)} ${getUniqueShapesOrdered(variants).join(' & ')} Cut ${diamondType === 'Natural' ? 'Natural' : 'Lab Grown'} diamonds${hasCenter ? ` featuring a beautiful center stone` : ''}. The ${getMetalOptions(variants).toLowerCase()} setting provides the perfect foundation for the ${diamondType === 'Natural' ? 'natural' : 'lab-grown'} diamonds to showcase their natural beauty. PrimeStyle's commitment to affordable luxury means you can enjoy exceptional craftsmanship without the designer price tag.`,
-    `Revel in the beauty of this ${getCaratRange(variants)} ${getUniqueShapesOrdered(variants).join(' & ')} Cut ${diamondType === 'Natural' ? 'Natural' : 'Lab Grown'} diamonds${hasCenter ? ` with an exceptional center stone` : ''}. Set in ${getMetalOptions(variants).toLowerCase()}, the ${diamondType === 'Natural' ? 'natural' : 'lab-grown'} diamonds create a mesmerizing display of light and elegance. PrimeStyle's master craftsmen ensure every detail meets the highest standards, making this piece perfect for those who demand excellence.`,
-    `Capture the essence of refined luxury with this ${getCaratRange(variants)} ${getUniqueShapesOrdered(variants).join(' & ')} Cut ${diamondType === 'Natural' ? 'Natural' : 'Lab Grown'} diamonds${hasCenter ? ` with a magnificent center stone` : ''}. The ${getMetalOptions(variants).toLowerCase()} setting enhances the natural brilliance of the ${diamondType === 'Natural' ? 'natural' : 'lab-grown'} diamonds, creating a piece that's both stunning and practical. PrimeStyle delivers the perfect balance of beauty, quality, and affordability.`,
-    `Immerse yourself in the world of fine jewelry with this ${getCaratRange(variants)} ${getUniqueShapesOrdered(variants).join(' & ')} Cut ${diamondType === 'Natural' ? 'Natural' : 'Lab Grown'} diamonds${hasCenter ? ` featuring a breathtaking center stone` : ''}. Crafted in ${getMetalOptions(variants).toLowerCase()}, the ${diamondType === 'Natural' ? 'natural' : 'lab-grown'} diamonds offer exceptional sparkle that never fails to impress. PrimeStyle's dedication to quality ensures this piece will become a treasured part of your collection.`,
-    `Discover the perfect expression of your style with this ${getCaratRange(variants)} ${getUniqueShapesOrdered(variants).join(' & ')} Cut ${diamondType === 'Natural' ? 'Natural' : 'Lab Grown'} diamonds${hasCenter ? ` with a captivating center stone` : ''}. The 14KT, 18KT & Platinum setting provides the ideal backdrop for the ${diamondType === 'Natural' ? 'natural' : 'lab-grown'} diamonds to shine. PrimeStyle's commitment to excellence means you can enjoy luxury craftsmanship at a price that makes sense.`,
-    `Embrace the art of fine jewelry with this ${getCaratRange(variants)} ${getUniqueShapesOrdered(variants).join(' & ')} Cut ${diamondType === 'Natural' ? 'Natural' : 'Lab Grown'} diamonds${hasCenter ? ` featuring an extraordinary center stone` : ''}. Set in ${getMetalOptions(variants).toLowerCase()}, the ${diamondType === 'Natural' ? 'natural' : 'lab-grown'} diamonds create a captivating display of elegance and sophistication. PrimeStyle's attention to detail ensures this piece offers exceptional value for the discerning jewelry enthusiast.`
-  ];
-  
-  // Select template based on product hash for consistency
-  const templateIndex = Math.abs(hashCode(JSON.stringify(product))) % descriptionTemplates.length;
-  const selectedDescription = descriptionTemplates[templateIndex];
-  
-  body += `<p>${selectedDescription}</p></div>`;
   return body;
 }
 
@@ -1052,4 +1026,206 @@ export function buildImageAltParent(item: {
   }
   
   return alt;
+}
+
+/**
+ * Build Title for variant row (duplicate field) - uses variant-specific data
+ */
+export function buildTitleDuplicate(variant: VariantSeed, diamondType: 'Natural' | 'LabGrown' | 'NoStones'): string {
+  const inputRow = variant.inputRowRef;
+  
+  if (diamondType === 'NoStones') {
+    const width = toNum(inputRow['Unique Charcteristic/ Width for plain wedding bands'] || '0');
+    const subcategory = trimAll(inputRow['Subcategory'] || 'Jewelry');
+    
+    if (width > 0) {
+      return `${width.toFixed(1)} mm - ${subcategory} - in 14KT, 18KT & Platinum`;
+    } else {
+      return `${subcategory} - in 14KT, 18KT & Platinum`;
+    }
+  }
+  
+  // Get carat weight for this specific variant
+  let totalCt: number;
+  if (variant.scenario === 'Unique+Center' && variant.centerSize) {
+    // For center variants, use center size + sum of side stones
+    const centerCt = toNum(variant.centerSize);
+    const sumSideCt = toNum(inputRow['Sum Side Ct'] || '0');
+    totalCt = centerCt + sumSideCt;
+  } else {
+    // For other scenarios, use the total carat weight from input
+    totalCt = toNum(inputRow['Total Ct Weight'] || '0');
+  }
+  
+  // Get shapes for this specific variant
+  const shapes = new Set<string>();
+  
+  // Add center shape if present
+  const centerShape = trimAll(
+    inputRow['Center shape'] ||
+    inputRow['Center Shape'] ||
+    inputRow['CenterShape'] ||
+    inputRow['Shape'] ||
+    ''
+  );
+  
+  if (centerShape) {
+    shapes.add(capitalizeFirst(centerShape));
+  }
+  
+  // Add side shapes from all side stone columns
+  for (let i = 1; i <= 10; i++) {
+    const sideShape = trimAll(
+      inputRow[`Side ${i} shape`] ||
+      inputRow[`Side ${i} Shape`] ||
+      inputRow[`Side ${i}Shape`] ||
+      ''
+    );
+    
+    if (sideShape) {
+      shapes.add(capitalizeFirst(sideShape));
+    }
+  }
+  
+  const shapesStr = Array.from(shapes).sort().map(shape => 
+    shape.charAt(0).toUpperCase() + shape.slice(1).toLowerCase()
+  ).join(' & ');
+  
+  // Get subcategory
+  const subcategory = trimAll(inputRow['Subcategory'] || 'Jewelry');
+  
+  // Build title following same rules as buildTitle
+  if (diamondType === 'Natural') {
+    // NATURAL: include "Natural Diamonds" (capital D)
+    return `${totalCt.toFixed(2)} CT ${shapesStr} Cut Natural Diamonds - ${subcategory}`;
+  } else {
+    // LAB-GROWN: DO NOT include "Lab-Grown" in Title, but capitalize "Diamonds"
+    return `${totalCt.toFixed(2)} CT ${shapesStr} Cut Diamonds - ${subcategory}`;
+  }
+}
+
+/**
+ * Build HTML body for variant row (duplicate field) - uses variant-specific data
+ */
+export function buildBodyDuplicate(variant: VariantSeed, diamondType: 'Natural' | 'LabGrown' | 'NoStones'): string {
+  const inputRow = variant.inputRowRef;
+  
+  if (diamondType === 'NoStones') {
+    const width = toNum(inputRow['Unique Charcteristic/ Width for plain wedding bands'] || '0');
+    const subcategory = trimAll(inputRow['Subcategory'] || 'Jewelry');
+    
+    if (width > 0) {
+      return `<div><p><strong>${width.toFixed(1)} mm - ${subcategory} - in 14KT, 18KT & Platinum</strong></p><p>Expertly crafted jewelry piece from Primestyle.com. Made with precision and attention to detail.</p><p>Perfect for everyday wear or special occasions.</p><p><strong>${width.toFixed(1)} mm ${subcategory} in 14KT, 18KT, and Platinum</strong></p><p>Reward yourself with our ${width.toFixed(1)} mm ${subcategory.toLowerCase()} in 14KT, 18KT, and Platinum.</p><p>Select your choice of precious metal between 14 Karat, 18 Karat Yellow, White and Rose Gold, or Platinum.</p><p>At Primestyle.com, we deal ONLY with 100% real, natural, and conflict-free diamonds. Our diamonds are NOT enhanced nor treated.</p><p>Shine with chic with Primestyle diamonds ${subcategory.toLowerCase()}.</p></div>`;
+    } else {
+      return `<div><p><strong>${subcategory} - in 14KT, 18KT & Platinum</strong></p><p>Expertly crafted jewelry piece from Primestyle.com. Made with precision and attention to detail.</p><p>Select your choice of precious metal between 14 Karat, 18 Karat Yellow, White and Rose Gold, or Platinum.</p><p>At Primestyle.com, we deal ONLY with 100% real, natural, and conflict-free diamonds. Our diamonds are NOT enhanced nor treated.</p><p>Perfect for everyday wear or special occasions.</p></div>`;
+    }
+  }
+  
+  // Get title for first line (EXACT Title, no repetition)
+  const title = buildTitleDuplicate(variant, diamondType);
+  
+  // Get type qualifier for body text
+  const typeQualifier = bodyTypeQualifier(diamondType === 'Natural' ? 'natural' : 'lab');
+  
+  // Check if this variant has a center stone
+  const hasCenter = variant.centerSize && toNum(variant.centerSize) > 0;
+  
+  // Get carat weight and shapes for this specific variant (needed for templates)
+  let totalCt: number;
+  if (variant.scenario === 'Unique+Center' && variant.centerSize) {
+    // For center variants, use center size + sum of side stones
+    const centerCt = toNum(variant.centerSize);
+    const sumSideCt = toNum(inputRow['Sum Side Ct'] || '0');
+    totalCt = centerCt + sumSideCt;
+  } else {
+    // For other scenarios, use the total carat weight from input
+    totalCt = toNum(inputRow['Total Ct Weight'] || '0');
+  }
+  
+  // Get shapes for this specific variant
+  const shapes = new Set<string>();
+  
+  // Add center shape if present
+  const centerShape = trimAll(
+    inputRow['Center shape'] ||
+    inputRow['Center Shape'] ||
+    inputRow['CenterShape'] ||
+    inputRow['Shape'] ||
+    ''
+  );
+  
+  if (centerShape) {
+    shapes.add(capitalizeFirst(centerShape));
+  }
+  
+  // Add side shapes from all side stone columns
+  for (let i = 1; i <= 10; i++) {
+    const sideShape = trimAll(
+      inputRow[`Side ${i} shape`] ||
+      inputRow[`Side ${i} Shape`] ||
+      inputRow[`Side ${i}Shape`] ||
+      ''
+    );
+    
+    if (sideShape) {
+      shapes.add(capitalizeFirst(sideShape));
+    }
+  }
+  
+  let body = `<div><p><strong>${title}</strong></p><p>`;
+  
+  if (hasCenter) {
+    // HAS CENTER: Center line + side stone lines in single paragraph
+    body += `<strong>Center:</strong> Select center from the options above<br>`;
+    
+    // List side stones as separate lines in same paragraph
+    const sideStoneGroups = listSideStoneGroups([variant], typeQualifier);
+    sideStoneGroups.forEach((group, index) => {
+      body += `<strong>Side Stones ${index + 1}:</strong> ${group}<br>`;
+    });
+  } else {
+    // REPEATING-CORE TYPE: List this specific variant's core weight
+    const shapesStr = Array.from(shapes).sort().map(shape => 
+      shape.charAt(0).toUpperCase() + shape.slice(1).toLowerCase()
+    ).join(' & ');
+    
+    // For bracelets, pendants, and similar items, get the stone count
+    let stoneCount = 1; // Default for single stone items
+    
+    if (isBraceletOrPendant([variant])) {
+      stoneCount = calculateTotalStoneCount([variant]);
+    }
+    
+    // Use actual stone count, but ensure we don't say "one round cut" unless truly single
+    const stoneCountText = stoneCount === 1 ? "1" : stoneCount.toString();
+    body += `<strong>${totalCt.toFixed(2)} Carat:</strong> <span>${stoneCountText} ${shapesStr.toLowerCase()} cut ${typeQualifier} diamonds weighing ${totalCt.toFixed(2)} Carat</span><br>`;
+  }
+  
+  body += `</p>`;
+  
+  // Add extra paragraph with 15 unique, engaging product description templates
+  const descriptionTemplates = [
+    `This ${totalCt.toFixed(2)} ct ${Array.from(shapes).sort().join(' & ')} Cut ${diamondType === 'Natural' ? 'Natural' : 'Lab Grown'} diamonds in ${getMetalOptions([variant])}${hasCenter ? ` with a beautiful center stone` : ''} showcases PrimeStyle's commitment to exceptional craftsmanship. The ${diamondType === 'Natural' ? 'natural' : 'lab-grown'} diamonds are carefully selected for their brilliance, while the premium metal setting ensures durability and timeless elegance. Perfect for marking life's most precious moments, this piece represents the perfect balance of luxury and accessibility.`,
+    `Discover the perfect blend of sophistication and value in this ${totalCt.toFixed(2)} ct ${Array.from(shapes).sort().join(' & ')} Cut ${diamondType === 'Natural' ? 'Natural' : 'Lab Grown'} diamonds${hasCenter ? ` featuring a stunning center stone` : ''}. Set in premium ${getMetalOptions([variant]).toLowerCase()}, every facet reflects PrimeStyle's dedication to quality. The ${diamondType === 'Natural' ? 'natural' : 'lab-grown'} diamonds offer stunning sparkle, making this piece ideal for both everyday wear and special occasions. A testament to affordable luxury.`,
+    `Handcrafted with precision, this ${totalCt.toFixed(2)} ct ${Array.from(shapes).sort().join(' & ')} Cut ${diamondType === 'Natural' ? 'Natural' : 'Lab Grown'} diamonds${hasCenter ? ` with an exquisite center stone` : ''} in ${getMetalOptions([variant]).toLowerCase()} embodies PrimeStyle's legacy of excellence. The ${diamondType === 'Natural' ? 'natural' : 'lab-grown'} diamonds are ethically sourced and expertly cut for maximum brilliance. Whether you're celebrating love or treating yourself, this piece delivers exceptional beauty without compromising on quality or price.`,
+    `Elevate your jewelry collection with this stunning ${totalCt.toFixed(2)} ct ${Array.from(shapes).sort().join(' & ')} Cut ${diamondType === 'Natural' ? 'Natural' : 'Lab Grown'} diamonds${hasCenter ? ` featuring a magnificent center stone` : ''}. The ${getMetalOptions([variant]).toLowerCase()} setting provides the perfect backdrop for the ${diamondType === 'Natural' ? 'natural' : 'lab-grown'} diamonds to shine. PrimeStyle's master artisans have created a piece that balances elegance with practicality, making it perfect for both formal events and daily wear.`,
+    `Experience luxury redefined with this ${totalCt.toFixed(2)} ct ${Array.from(shapes).sort().join(' & ')} Cut ${diamondType === 'Natural' ? 'Natural' : 'Lab Grown'} diamonds${hasCenter ? ` with a breathtaking center stone` : ''} in ${getMetalOptions([variant]).toLowerCase()}. Every detail reflects PrimeStyle's unwavering standards, from the carefully selected ${diamondType === 'Natural' ? 'natural' : 'lab-grown'} diamonds to the precision-crafted setting. This piece offers the perfect combination of beauty, durability, and value for the discerning jewelry lover.`,
+    `Transform your style with this magnificent ${totalCt.toFixed(2)} ct ${Array.from(shapes).sort().join(' & ')} Cut ${diamondType === 'Natural' ? 'Natural' : 'Lab Grown'} diamonds${hasCenter ? ` featuring an extraordinary center stone` : ''}. Set in ${getMetalOptions([variant]).toLowerCase()}, the ${diamondType === 'Natural' ? 'natural' : 'lab-grown'} diamonds create a dazzling display of light and brilliance. PrimeStyle's commitment to quality craftsmanship ensures this piece will become a cherished part of your jewelry collection for years to come.`,
+    `Indulge in the artistry of this ${totalCt.toFixed(2)} ct ${Array.from(shapes).sort().join(' & ')} Cut ${diamondType === 'Natural' ? 'Natural' : 'Lab Grown'} diamonds${hasCenter ? ` with a captivating center stone` : ''}. The ${getMetalOptions([variant]).toLowerCase()} setting enhances the natural beauty of the ${diamondType === 'Natural' ? 'natural' : 'lab-grown'} diamonds, creating a piece that's both sophisticated and wearable. PrimeStyle's attention to detail makes this jewelry perfect for those who appreciate fine craftsmanship without the premium price tag.`,
+    `Celebrate your unique story with this ${totalCt.toFixed(2)} ct ${Array.from(shapes).sort().join(' & ')} Cut ${diamondType === 'Natural' ? 'Natural' : 'Lab Grown'} diamonds${hasCenter ? ` featuring a remarkable center stone` : ''} in ${getMetalOptions([variant]).toLowerCase()}. The ${diamondType === 'Natural' ? 'natural' : 'lab-grown'} diamonds are expertly cut to maximize their natural sparkle, while the setting ensures comfort and durability. PrimeStyle delivers exceptional quality that makes every day feel special.`,
+    `Unlock the door to timeless elegance with this ${totalCt.toFixed(2)} ct ${Array.from(shapes).sort().join(' & ')} Cut ${diamondType === 'Natural' ? 'Natural' : 'Lab Grown'} diamonds${hasCenter ? ` with a stunning center stone` : ''}. Crafted in ${getMetalOptions([variant]).toLowerCase()}, the ${diamondType === 'Natural' ? 'natural' : 'lab-grown'} diamonds offer stunning brilliance that catches the eye from every angle. PrimeStyle's dedication to excellence makes this piece a smart investment in both beauty and quality.`,
+    `Step into sophistication with this ${totalCt.toFixed(2)} ct ${Array.from(shapes).sort().join(' & ')} Cut ${diamondType === 'Natural' ? 'Natural' : 'Lab Grown'} diamonds${hasCenter ? ` featuring a beautiful center stone` : ''}. The ${getMetalOptions([variant]).toLowerCase()} setting provides the perfect foundation for the ${diamondType === 'Natural' ? 'natural' : 'lab-grown'} diamonds to showcase their natural beauty. PrimeStyle's commitment to affordable luxury means you can enjoy exceptional craftsmanship without the designer price tag.`,
+    `Revel in the beauty of this ${totalCt.toFixed(2)} ct ${Array.from(shapes).sort().join(' & ')} Cut ${diamondType === 'Natural' ? 'Natural' : 'Lab Grown'} diamonds${hasCenter ? ` with an exceptional center stone` : ''}. Set in ${getMetalOptions([variant]).toLowerCase()}, the ${diamondType === 'Natural' ? 'natural' : 'lab-grown'} diamonds create a mesmerizing display of light and elegance. PrimeStyle's master craftsmen ensure every detail meets the highest standards, making this piece perfect for those who demand excellence.`,
+    `Capture the essence of refined luxury with this ${totalCt.toFixed(2)} ct ${Array.from(shapes).sort().join(' & ')} Cut ${diamondType === 'Natural' ? 'Natural' : 'Lab Grown'} diamonds${hasCenter ? ` with a magnificent center stone` : ''}. The ${getMetalOptions([variant]).toLowerCase()} setting enhances the natural brilliance of the ${diamondType === 'Natural' ? 'natural' : 'lab-grown'} diamonds, creating a piece that's both stunning and practical. PrimeStyle delivers the perfect balance of beauty, quality, and affordability.`,
+    `Immerse yourself in the world of fine jewelry with this ${totalCt.toFixed(2)} ct ${Array.from(shapes).sort().join(' & ')} Cut ${diamondType === 'Natural' ? 'Natural' : 'Lab Grown'} diamonds${hasCenter ? ` featuring a breathtaking center stone` : ''}. Crafted in ${getMetalOptions([variant]).toLowerCase()}, the ${diamondType === 'Natural' ? 'natural' : 'lab-grown'} diamonds offer exceptional sparkle that never fails to impress. PrimeStyle's dedication to quality ensures this piece will become a treasured part of your collection.`,
+    `Discover the perfect expression of your style with this ${totalCt.toFixed(2)} ct ${Array.from(shapes).sort().join(' & ')} Cut ${diamondType === 'Natural' ? 'Natural' : 'Lab Grown'} diamonds${hasCenter ? ` with a captivating center stone` : ''}. The ${getMetalOptions([variant]).toLowerCase()} setting provides the ideal backdrop for the ${diamondType === 'Natural' ? 'natural' : 'lab-grown'} diamonds to shine. PrimeStyle's commitment to excellence means you can enjoy luxury craftsmanship at a price that makes sense.`,
+    `Embrace the art of fine jewelry with this ${totalCt.toFixed(2)} ct ${Array.from(shapes).sort().join(' & ')} Cut ${diamondType === 'Natural' ? 'Natural' : 'Lab Grown'} diamonds${hasCenter ? ` featuring an extraordinary center stone` : ''}. Set in ${getMetalOptions([variant]).toLowerCase()}, the ${diamondType === 'Natural' ? 'natural' : 'lab-grown'} diamonds create a captivating display of elegance and sophistication. PrimeStyle's attention to detail ensures this piece offers exceptional value for the discerning jewelry enthusiast.`
+  ];
+  
+  // Select template based on variant hash for consistency
+  const templateIndex = Math.abs(hashCode(JSON.stringify(variant))) % descriptionTemplates.length;
+  const selectedDescription = descriptionTemplates[templateIndex];
+  
+  body += `<p>${selectedDescription}</p></div>`;
+  return body;
 }

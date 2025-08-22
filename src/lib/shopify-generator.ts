@@ -15,6 +15,9 @@ import {
   buildImageAltVariant,
   buildImageAltParent,
   hasCenter,
+  getUniqueShapesOrdered,
+  buildTitleDuplicate,
+  buildBodyDuplicate,
   type Product 
 } from './template-builders';
 
@@ -565,9 +568,9 @@ export function generateShopifyRowsWithCosts(
         'CAD Creation': `$${toFixed2(costBreakdown.cadCreationCost)}`,
         Additional: `$${toFixed2(costBreakdown.additionalCost)}`,
         
-        // Duplicate fields per spec
-        'Title (duplicate)': productInfo.title,
-        'Description (duplicate)': productInfo.bodyHTML,
+        // Duplicate fields per spec - use variant-specific information with same style as Title/Description
+        'Title (duplicate)': buildTitleDuplicate(variant, productInfo.diamondType as 'Natural' | 'LabGrown' | 'NoStones'),
+        'Description (duplicate)': buildBodyDuplicate(variant, productInfo.diamondType as 'Natural' | 'LabGrown' | 'NoStones'),
         
         // Cost breakdown for analysis
         costBreakdown
