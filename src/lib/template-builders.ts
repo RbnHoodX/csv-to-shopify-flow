@@ -644,8 +644,11 @@ export function buildSeoTitleParent(item: {
   shapes: string[];
   caratRange?: { minCt: number; maxCt: number };
   widthMm?: number;
+  metals?: string[];
+  centerCt?: number;
+  centerCtRange?: { minCt: number; maxCt: number };
 }): string {
-  const { type, subcategory, core, shapes, caratRange, widthMm } = item;
+  const { type, subcategory, core, shapes, caratRange, widthMm, metals, centerCt, centerCtRange } = item;
   
   if (type === 'no-stones') {
     // No-stones parent: "{widthMm} mm - {Subcategory} - {Core}"
@@ -655,7 +658,7 @@ export function buildSeoTitleParent(item: {
     return `${subcategory} - ${core}`;
   }
   
-  // Stones parent: "{minCt}-{maxCt} CT {Shapes} Cut {Lab Grown|Natural} Diamonds - {Subcategory} - {Core}"
+  // Stones parent: Include shape, metal, and center stone details
   const shapesStr = titleJoinShapes(shapes);
   const typeQualifier = type === 'lab' ? 'Lab Grown' : 'Natural';
   
@@ -663,22 +666,43 @@ export function buildSeoTitleParent(item: {
   if (caratRange && caratRange.minCt !== caratRange.maxCt) {
     title = `${formatCt2(caratRange.minCt)}-${formatCt2(caratRange.maxCt)} CT `;
   }
-  title += `${shapesStr} Cut ${typeQualifier} Diamonds - ${subcategory} - ${core}`;
+  
+  // Add shapes and diamond type
+  title += `${shapesStr} Cut ${typeQualifier} Diamonds`;
+  
+  // Add metal information if available
+  if (metals && metals.length > 0) {
+    const metalStr = metals.length === 1 ? metals[0] : `${metals[0]} & ${metals[metals.length - 1]}`;
+    title += ` in ${metalStr}`;
+  }
+  
+  // Add center stone details if available
+  if (centerCtRange && centerCtRange.minCt > 0) {
+    if (centerCtRange.minCt === centerCtRange.maxCt) {
+      title += ` with ${formatCt2(centerCtRange.minCt)} CT Center`;
+    } else {
+      title += ` with ${formatCt2(centerCtRange.minCt)}-${formatCt2(centerCtRange.maxCt)} CT Center`;
+    }
+  } else if (centerCt && centerCt > 0) {
+    title += ` with ${formatCt2(centerCt)} CT Center`;
+  }
+  
+  title += ` - ${subcategory}`;
   
   // Remove double spaces
   title = title.replace(/\s+/g, ' ');
   
   // Length constraint: ≤ 65 chars, trim from left before last " - " if needed
-  if (title.length > 65) {
-    const lastDashIndex = title.lastIndexOf(' - ');
-    if (lastDashIndex > 0) {
-      const requiredSuffix = title.substring(lastDashIndex);
-      const availableSpace = 65 - requiredSuffix.length;
-      if (availableSpace > 15) { // Ensure we keep meaningful content
-        title = title.substring(0, availableSpace) + requiredSuffix;
-      }
-    }
-  }
+  // if (title.length > 65) {
+  //   const lastDashIndex = title.lastIndexOf(' - ');
+  //   if (lastDashIndex > 0) {
+  //     const requiredSuffix = title.substring(lastDashIndex);
+  //     const availableSpace = 65 - requiredSuffix.length;
+  //     if (availableSpace > 15) { // Ensure we keep meaningful content
+  //       title = title.substring(0, availableSpace) + requiredSuffix;
+  //     }
+  //   }
+  // }
   
   return title;
 }
@@ -693,49 +717,55 @@ export function buildSeoTitleVariant(item: {
   totalCt: number;
   shapes: string[];
   metal?: string;
+  centerCt?: number;
   rowIndex?: number;
 }): string {
-  const { type, subcategory, sku, totalCt, shapes, metal, rowIndex = 0 } = item;
+  const { type, subcategory, sku, totalCt, shapes, metal, centerCt, rowIndex = 0 } = item;
   
   if (type === 'no-stones') {
     // No-stones variant: "{Subcategory} - {Metal} - {SKU}"
     return `${subcategory} - ${metal || ''} - ${sku}`;
   }
   
-  // Stones variant: use new template format
-  const ct = `${formatCt2(totalCt)} CT`;
-  const cut = shapes.length > 0 ? shapes[0].charAt(0).toUpperCase() + shapes[0].slice(1).toLowerCase() : 'Diamond';
-  const lab = type === 'lab' ? 'Lab-Grown ' : '';
-  const ring = subcategory.toLowerCase().replace('s', '');
-  const metalPart = metal ? ` in ${metal}` : '';
+  // Stones variant: Include shape, metal, and center stone details
+  const shapesStr = titleJoinShapes(shapes);
+  const typeQualifier = type === 'lab' ? 'Lab Grown' : 'Natural';
   
-  // Template array - choose by variantIndex % 4
-  const templates = [
-    `${ct} ${cut} ${lab}Diamond ${ring}${metalPart} | PrimeStyle`,
-    `${cut} ${lab}Diamond ${ring} ${ct}${metalPart} | PrimeStyle`,
-    `Affordable ${ct} ${cut} ${lab}Diamond ${ring}${metalPart} | PrimeStyle`,
-    `${ct} ${cut} ${lab}${ring}${metalPart} | PrimeStyle`
-  ];
+  let title = '';
   
-  const templateIndex = rowIndex % 4;
-  const title = templates[templateIndex];
+  // Add carat weight and shapes
+  title += `${formatCt2(totalCt)} CT ${shapesStr} Cut ${typeQualifier} Diamonds`;
+  
+  // Add metal information if available
+  if (metal) {
+    title += ` in ${metal}`;
+  }
+  
+  // Add center stone details if available
+  if (centerCt && centerCt > 0) {
+    title += ` with ${formatCt2(centerCt)} CT Center`;
+  }
+  
+  title += ` - ${subcategory}`;
   
   // Remove double spaces
-  const cleanTitle = title.replace(/\s+/g, ' ');
+  title = title.replace(/\s+/g, ' ');
   
-  // Length constraint: ≤ 65 chars, trim from left before last " | " if needed
-  // if (cleanTitle.length > 65) {
-  //   const lastPipeIndex = cleanTitle.lastIndexOf(' | ');
-  //   if (lastPipeIndex > 0) {
-  //     const requiredSuffix = cleanTitle.substring(lastPipeIndex);
+  // Length constraint: ≤ 65 chars, trim from left before last " - " if needed
+  // if (title.length > 65) {
+  //   const lastDashIndex = title.lastIndexOf(' - ');
+  //   if (lastDashIndex > 0) {
+  //     const requiredSuffix = title.substring(lastDashIndex);
   //     const availableSpace = 65 - requiredSuffix.length;
   //     if (availableSpace > 15) { // Ensure we keep meaningful content
-  //       return cleanTitle.substring(0, availableSpace) + requiredSuffix;
+  //       title = title.substring(0, availableSpace) + requiredSuffix;
   //     }
   //   }
   // }
   
-  return cleanTitle;
+  return title;
+  
+
 }
 
 /**
@@ -746,23 +776,38 @@ export function buildSeoDescriptionParent(item: {
   subcategory: string;
   shapes: string[];
   caratRange?: { minCt: number; maxCt: number };
+  metals?: string[];
+  centerCt?: number;
 }, charLimit: number = 155): string {
-  const { type, subcategory, shapes, caratRange } = item;
+  const { type, subcategory, shapes, caratRange, metals, centerCt } = item;
   
   if (type === 'no-stones') {
     return `Expertly crafted ${subcategory.toLowerCase()} from PrimeStyle.com. Premium metals with precision craftsmanship.`;
   }
   
-  // Stones parent: short range summary using minCt-maxCt, shapes, and qualifier
+  // Stones parent: Expand title with richer descriptive language but keep same details
   const shapesLower = titleJoinShapes(shapes).toLowerCase().replace(' cut', '');
   const labOrNaturalSingular = type === 'lab' ? 'lab-grown diamond' : 'natural diamond';
   
   let description = '';
   if (caratRange && caratRange.minCt !== caratRange.maxCt) {
-    description = `${formatCt2(caratRange.minCt)}-${formatCt2(caratRange.maxCt)} ct ${shapesLower} ${labOrNaturalSingular} ${subcategory.toLowerCase().replace('s', '')}. Select metal and center options. PrimeStyle quality.`;
+    description = `Stunning ${formatCt2(caratRange.minCt)}-${formatCt2(caratRange.maxCt)} ct ${shapesLower} cut ${labOrNaturalSingular} ${subcategory.toLowerCase().replace('s', '')}`;
   } else {
-    description = `${formatCt2(caratRange?.minCt || 0)} ct ${shapesLower} ${labOrNaturalSingular} ${subcategory.toLowerCase().replace('s', '')}. Select metal and center options. PrimeStyle quality.`;
+    description = `Exquisite ${formatCt2(caratRange?.minCt || 0)} ct ${shapesLower} cut ${labOrNaturalSingular} ${subcategory.toLowerCase().replace('s', '')}`;
   }
+  
+  // Add metal information if available
+  if (metals && metals.length > 0) {
+    const metalStr = metals.length === 1 ? metals[0] : `${metals[0]} and ${metals[metals.length - 1]}`;
+    description += ` crafted in premium ${metalStr}`;
+  }
+  
+  // Add center stone details if available
+  if (centerCt && centerCt > 0) {
+    description += ` featuring a beautiful ${formatCt2(centerCt)} ct center stone`;
+  }
+  
+  description += `. Handcrafted by PrimeStyle for exceptional brilliance and lasting beauty.`;
   
   // Remove double spaces
   description = description.replace(/\s+/g, ' ');

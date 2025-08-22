@@ -341,7 +341,7 @@ function createProductInfo(variants: VariantSeed[]) {
     googleCategory,
     diamondType: inputRow.diamondsType || 'diamonds',
     qualities: [...new Set(variants.map(v => v.qualityCode).filter(Boolean))],
-    metals: [...new Set(variants.map(v => v.metalCode))],
+    metals: [...new Set(variants.map(v => translateMetal(v.metalCode)))],
     seoTitle: seoData.title,
     seoDescription: seoData.description
   };
@@ -459,12 +459,21 @@ export function generateShopifyRowsWithCosts(
           maxCt: Math.max(...caratWeights)
         } : undefined;
         
-        seoTitle = buildSeoTitleParent({ type, subcategory, core: variant.core, shapes, caratRange, widthMm });
-        seoDescription = buildSeoDescriptionParent({ type, subcategory, shapes, caratRange });
+        // Calculate center stone range across all variants
+        const centerStoneWeights = sortedVariants
+          .map(v => v.centerSize ? toNum(v.centerSize) : 0)
+          .filter(ct => ct > 0);
+        const centerCtRange = centerStoneWeights.length > 0 ? {
+          minCt: Math.min(...centerStoneWeights),
+          maxCt: Math.max(...centerStoneWeights)
+        } : undefined;
+        
+        seoTitle = buildSeoTitleParent({ type, subcategory, core: variant.core, shapes, caratRange, widthMm, metals: productInfo.metals, centerCt: centerCt, centerCtRange });
+        seoDescription = buildSeoDescriptionParent({ type, subcategory, shapes, caratRange, metals: productInfo.metals, centerCt: centerCt });
         imageAltText = buildImageAltParent({ type, subcategory, caratRange, shapes, widthMm });
       } else {
         // Variant SEO data
-        seoTitle = buildSeoTitleVariant({ type, subcategory, sku, totalCt, shapes, metal, rowIndex: index });
+        seoTitle = buildSeoTitleVariant({ type, subcategory, sku, totalCt, shapes, metal, centerCt, rowIndex: index });
         seoDescription = buildSeoDescriptionVariant({ type, subcategory, totalCt, shapes, metal, quality, rowIndex: index });
         imageAltText = buildImageAltVariant({ type, subcategory, totalCt, shapes, metal, centerCt });
       }
