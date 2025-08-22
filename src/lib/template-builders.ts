@@ -839,11 +839,11 @@ export function buildSeoDescriptionVariant(item: {
   quality?: string;
   centerCt?: number;
   rowIndex?: number;
-}, charLimit: number = 500): string {
+}, charLimit: number = 200): string {
   const { type, subcategory, totalCt, shapes, metal, quality, centerCt, rowIndex = 0 } = item;
   
   if (type === 'no-stones') {
-    const description = `This ${formatCt2(totalCt)}mm ${subcategory.toLowerCase()} in ${metal} showcases PrimeStyle's commitment to exceptional craftsmanship. The premium ${metal.toLowerCase()} setting ensures durability and timeless elegance, making this piece perfect for both everyday wear and special occasions. A testament to affordable luxury that doesn't compromise on quality or style.`;
+    const description = `Celebrate your moment with a ${formatCt2(totalCt)}mm ${subcategory.toLowerCase()} in ${metal}. Handcrafted by PrimeStyle for lasting brilliance.`;
     return description.length > charLimit ? description.substring(0, charLimit - 3) + '...' : description;
   }
   
@@ -857,23 +857,24 @@ export function buildSeoDescriptionVariant(item: {
   // Add center stone information if available
   const centerPart = centerCt && centerCt > 0 ? ` featuring a beautiful ${formatCt2(centerCt)} ct center stone` : '';
   
-  // Template array - 15 unique, engaging, human-like product descriptions (approximately 450 characters)
+  // Template array - 15 longer, more descriptive versions with center stone info
   const templates = [
-    `This ${ct}${cut}${lab}diamond ${ring} in ${metal}${centerPart} showcases PrimeStyle's commitment to exceptional craftsmanship. The ${cut}${lab}diamonds are carefully selected for their brilliance, while the ${metal.toLowerCase()} setting ensures durability and timeless elegance. Perfect for marking life's most precious moments, this piece represents the perfect balance of luxury and accessibility.`,
-    `Discover the perfect blend of sophistication and value in this ${ct}${cut}${lab}diamond ${ring}${centerPart}. Set in premium ${metal.toLowerCase()}, every facet reflects PrimeStyle's dedication to quality. The ${cut}${lab}diamonds offer stunning sparkle, making this piece ideal for both everyday wear and special occasions. A testament to affordable luxury.`,
-    `Handcrafted with precision, this ${ct}${cut}${lab}diamond ${ring}${centerPart} in ${metal.toLowerCase()} embodies PrimeStyle's legacy of excellence. The ${cut}${lab}diamonds are ethically sourced and expertly cut for maximum brilliance. Whether you're celebrating love or treating yourself, this piece delivers exceptional beauty without compromising on quality or price.`,
-    `Elevate your jewelry collection with this stunning ${ct}${cut}${lab}diamond ${ring}${centerPart}. The ${metal.toLowerCase()} setting provides the perfect backdrop for the ${cut}${lab}diamonds to shine. PrimeStyle's master artisans have created a piece that balances elegance with practicality, making it perfect for both formal events and daily wear.`,
-    `Experience luxury redefined with this ${ct}${cut}${lab}diamond ${ring}${centerPart} in ${metal.toLowerCase()}. Every detail reflects PrimeStyle's unwavering standards, from the carefully selected ${cut}${lab}diamonds to the precision-crafted setting. This piece offers the perfect combination of beauty, durability, and value for the discerning jewelry lover.`,
-    `Transform your style with this magnificent ${ct}${cut}${lab}diamond ${ring}${centerPart}. Set in ${metal.toLowerCase()}, the ${cut}${lab}diamonds create a dazzling display of light and brilliance. PrimeStyle's commitment to quality craftsmanship ensures this piece will become a cherished part of your jewelry collection for years to come.`,
-    `Indulge in the artistry of this ${ct}${cut}${lab}diamond ${ring}${centerPart}. The ${metal.toLowerCase()} setting enhances the natural beauty of the ${cut}${lab}diamonds, creating a piece that's both sophisticated and wearable. PrimeStyle's attention to detail makes this ring perfect for those who appreciate fine jewelry without the premium price tag.`,
-    `Celebrate your unique story with this ${ct}${cut}${lab}diamond ${ring}${centerPart} in ${metal.toLowerCase()}. The ${cut}${lab}diamonds are expertly cut to maximize their natural sparkle, while the setting ensures comfort and durability. PrimeStyle delivers exceptional quality that makes every day feel special.`,
-    `Unlock the door to timeless elegance with this ${ct}${cut}${lab}diamond ${ring}${centerPart}. Crafted in ${metal.toLowerCase()}, the ${cut}${lab}diamonds offer stunning brilliance that catches the eye from every angle. PrimeStyle's dedication to excellence makes this piece a smart investment in both beauty and quality.`,
-    `Step into sophistication with this ${ct}${cut}${lab}diamond ${ring}${centerPart}. The ${metal.toLowerCase()} setting provides the perfect foundation for the ${cut}${lab}diamonds to showcase their natural beauty. PrimeStyle's commitment to affordable luxury means you can enjoy exceptional craftsmanship without the designer price tag.`,
-    `Revel in the beauty of this ${ct}${cut}${lab}diamond ${ring}${centerPart}. Set in ${metal.toLowerCase()}, the ${cut}${lab}diamonds create a mesmerizing display of light and elegance. PrimeStyle's master craftsmen ensure every detail meets the highest standards, making this piece perfect for those who demand excellence.`,
-    `Capture the essence of refined luxury with this ${ct}${cut}${lab}diamond ${ring}${centerPart}. The ${metal.toLowerCase()} setting enhances the natural brilliance of the ${cut}${lab}diamonds, creating a piece that's both stunning and practical. PrimeStyle delivers the perfect balance of beauty, quality, and affordability.`,
-    `Immerse yourself in the world of fine jewelry with this ${ct}${cut}${lab}diamond ${ring}${centerPart}. Crafted in ${metal.toLowerCase()}, the ${cut}${lab}diamonds offer exceptional sparkle that never fails to impress. PrimeStyle's dedication to quality ensures this piece will become a treasured part of your collection.`,
-    `Discover the perfect expression of your style with this ${ct}${cut}${lab}diamond ${ring}${centerPart}. The ${metal.toLowerCase()} setting provides the ideal backdrop for the ${cut}${lab}diamonds to shine. PrimeStyle's commitment to excellence means you can enjoy luxury craftsmanship at a price that makes sense.`,
-    `Embrace the art of fine jewelry with this ${ct}${cut}${lab}diamond ${ring}${centerPart}. Set in ${metal.toLowerCase()}, the ${cut}${lab}diamonds create a captivating display of elegance and sophistication. PrimeStyle's attention to detail ensures this piece offers exceptional value for the discerning jewelry enthusiast.`
+    `Exquisite and sophisticated, this stunning ${ct}${cut}${lab}${ring}${metalPart}${centerPart}. Expertly crafted by PrimeStyle artisans for exceptional brilliance and lasting beauty.`,
+    `Celebrate your most precious moments with this magnificent ${ct}${cut}${lab}${ring}${metalPart}${centerPart}. Ethically sourced and conflict-free, offering luxury at accessible prices.`,
+    `Discover the perfect blend of elegance and affordability with this ${ct}${cut}${lab}${ring}${metalPart}${centerPart}. Premium quality craftsmanship that exceeds expectations without breaking the bank.`,
+    `Make your commitment official with this breathtaking ${ct}${cut}${lab}${ring}${metalPart}${centerPart}. Handcrafted perfection that symbolizes your unique love story.`,
+    `A timeless masterpiece: this ${ct}${cut}${lab}${ring}${metalPart}${centerPart}. Designed for daily elegance with PrimeStyle's signature attention to detail and lifetime support.`,
+    `Embrace luxury and sophistication with this extraordinary ${ct}${cut}${lab}${ring}${metalPart}${centerPart}. Meticulously crafted for those who appreciate the finest things in life.`,
+    `Transform your special day with this captivating ${ct}${cut}${lab}${ring}${metalPart}${centerPart}. Every facet reflects PrimeStyle's commitment to excellence and beauty.`,
+    `Experience the perfect harmony of tradition and innovation with this ${ct}${cut}${lab}${ring}${metalPart}${centerPart}. A testament to PrimeStyle's legacy of exceptional craftsmanship.`,
+    `Indulge in the ultimate expression of love with this ${ct}${cut}${lab}${ring}${metalPart}${centerPart}. Each detail carefully considered for maximum impact and lasting memories.`,
+    `Unlock the door to everlasting romance with this ${ct}${cut}${lab}${ring}${metalPart}${centerPart}. PrimeStyle's dedication to perfection shines through in every aspect.`,
+    `Step into a world of refined elegance with this ${ct}${cut}${lab}${ring}${metalPart}${centerPart}. A celebration of life's most precious moments, crafted with love.`,
+    `Revel in the artistry of this magnificent ${ct}${cut}${lab}${ring}${metalPart}${centerPart}. PrimeStyle's master artisans have created something truly extraordinary.`,
+    `Capture the essence of timeless beauty with this ${ct}${cut}${lab}${ring}${metalPart}${centerPart}. Every glance reveals new depths of sophistication and charm.`,
+    `Immerse yourself in luxury with this exceptional ${ct}${cut}${lab}${ring}${metalPart}${centerPart}. PrimeStyle's commitment to quality ensures a lifetime of admiration.`,
+    `Discover the perfect symbol of your devotion in this ${ct}${cut}${lab}${ring}${metalPart}${centerPart}. Crafted with passion and precision for the most discerning tastes.`,
+    `Elevate your style with this remarkable ${ct}${cut}${lab}${ring}${metalPart}${centerPart}. A true testament to PrimeStyle's unwavering standards of excellence.`
   ];
   
   // Select template based on row index for consistency
