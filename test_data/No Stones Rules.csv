@@ -1,0 +1,9 @@
+If No Center nor Stones Natural,Weight Index,,,Metal Price,,Labor,Cost,Margin,,
+14W,14,1.00,,14,75.00,Per side stone, $1.00 ,Range Begin,Range End,Multiplier
+14Y,18,1.20,,18,92.00,Per Center, $3.00 ,0,500,2.25
+14R,PLT,1.74,,PLT,45.00,Polish, $25.00 ,500,1000,2
+18W,,,,,,CAD Creation, $20.00 ,1000,1500,2
+18Y,,,,,,Bracelets, $125.00 ,1500,2000,2
+18R,,,,,,Additional,25,2000,3500,1.9
+PLT,,,,,,Polish Bridal sets, $50.00 ,3500,,1.8
+,,,,,,Pendants, $80.00 ,,,

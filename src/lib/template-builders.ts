@@ -118,11 +118,51 @@ export function hasCenter(variants: VariantSeed[]): boolean {
   });
 }
 
+/**
+ * Calculate total stone count for bracelets, pendants, and similar items
+ * Dynamically sums all side stones from the input data
+ */
+function calculateTotalStoneCount(variants: VariantSeed[]): number {
+  const firstVariant = variants[0];
+  const inputRow = firstVariant.inputRowRef;
+  
+  let totalStones = 0;
+  
+  // Sum all side stones from columns 1-10
+  for (let i = 1; i <= 10; i++) {
+    const sideStones = toNum(inputRow[`Side ${i} Stones`] || '0');
+    totalStones += sideStones;
+  }
+  
+  return totalStones;
+}
 
-
-
-
-
+/**
+ * Check if item is a bracelet or pendant based on category
+ */
+function isBraceletOrPendant(variants: VariantSeed[]): boolean {
+  const firstVariant = variants[0];
+  const inputRow = firstVariant.inputRowRef;
+  
+  const category = trimAll(
+    inputRow["Category"] ||
+    inputRow["Type"] ||
+    ""
+  ).toLowerCase();
+  
+  const subcategory = trimAll(
+    inputRow["Subcategory"] ||
+    inputRow["Sub Category"] ||
+    ""
+  ).toLowerCase();
+  
+  return category.includes("bracelet") || 
+         category.includes("pendants") || 
+         category.includes("pendant") ||
+         subcategory.includes("bracelet") ||
+         subcategory.includes("pendants") ||
+         subcategory.includes("pendant");
+}
 
 /**
  * Build SEO title (same as title)
@@ -403,10 +443,26 @@ export function buildBody(product: Product): string {
     const coreWeights = listCoreWeightsAscending(variants);
     coreWeights.forEach((core, index) => {
       const shapesStr = titleJoinShapes(core.shapes);
-      // Transform from "At least one Round Cut natural diamonds weighing 0.35 carat"
-      // To: "0.35 Carat: 1 round cut natural diamonds weighing 0.35 Carat"
       const caratWeight = formatCt2(core.totalCt);
-      body += `<strong>${caratWeight} Carat:</strong> <span>1 ${shapesStr.toLowerCase()} cut ${typeQualifier} diamonds weighing ${caratWeight} Carat</span><br>`;
+      
+      // For bracelets, pendants, and similar items, find the stone count for this specific carat weight
+      let stoneCount = 1; // Default for single stone items
+      
+      if (isBraceletOrPendant(variants)) {
+        // Find the variant that matches this carat weight to get the correct stone count
+        const matchingVariant = variants.find(variant => {
+          const variantTotalCt = toNum(variant.inputRowRef['Total Ct Weight'] || '0');
+          return Math.abs(variantTotalCt - core.totalCt) < 0.01; // Allow small floating point differences
+        });
+        
+        if (matchingVariant) {
+          stoneCount = calculateTotalStoneCount([matchingVariant]);
+        }
+      }
+      
+      // Use actual stone count, but ensure we don't say "one round cut" unless truly single
+      const stoneCountText = stoneCount === 1 ? "1" : stoneCount.toString();
+      body += `<strong>${caratWeight} Carat:</strong> <span>${stoneCountText} ${shapesStr.toLowerCase()} cut ${typeQualifier} diamonds weighing ${caratWeight} Carat</span><br>`;
     });
   }
   
@@ -432,7 +488,9 @@ function listSideStoneGroups(variants: VariantSeed[], typeQualifier: string): st
       const shapeStr = sideShape.charAt(0).toUpperCase() + sideShape.slice(1).toLowerCase();
       // Use stone COUNT, not weight, followed by total carat
       // Format: "3 Round Cut natural diamonds weighing 0.30 carat"
-      groups.push(`${sideStones} ${shapeStr} Cut ${typeQualifier} diamonds weighing ${formatCt2(sideCt)} carat`);
+      // Ensure we don't say "one round cut" unless truly a single stone
+      const stoneCountText = sideStones === 1 ? "1" : sideStones.toString();
+      groups.push(`${stoneCountText} ${shapeStr} Cut ${typeQualifier} diamonds weighing ${formatCt2(sideCt)} carat`);
     }
   }
   
