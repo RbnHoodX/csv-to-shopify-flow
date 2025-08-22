@@ -778,8 +778,9 @@ export function buildSeoDescriptionParent(item: {
   caratRange?: { minCt: number; maxCt: number };
   metals?: string[];
   centerCt?: number;
-}, charLimit: number = 155): string {
-  const { type, subcategory, shapes, caratRange, metals, centerCt } = item;
+  centerCtRange?: { minCt: number; maxCt: number };
+}, charLimit: number = 200): string {
+  const { type, subcategory, shapes, caratRange, metals, centerCt, centerCtRange } = item;
   
   if (type === 'no-stones') {
     return `Expertly crafted ${subcategory.toLowerCase()} from PrimeStyle.com. Premium metals with precision craftsmanship.`;
@@ -803,19 +804,25 @@ export function buildSeoDescriptionParent(item: {
   }
   
   // Add center stone details if available
-  if (centerCt && centerCt > 0) {
+  if (centerCtRange && centerCtRange.minCt > 0) {
+    if (centerCtRange.minCt === centerCtRange.maxCt) {
+      description += ` featuring a beautiful ${formatCt2(centerCtRange.minCt)} ct center stone`;
+    } else {
+      description += ` featuring beautiful center stones ranging from ${formatCt2(centerCtRange.minCt)} to ${formatCt2(centerCtRange.maxCt)} ct`;
+    }
+  } else if (centerCt && centerCt > 0) {
     description += ` featuring a beautiful ${formatCt2(centerCt)} ct center stone`;
   }
   
-  description += `. Handcrafted by PrimeStyle for exceptional brilliance and lasting beauty.`;
+  description += `. Expertly handcrafted by PrimeStyle artisans for exceptional brilliance, lasting beauty, and timeless elegance.`;
   
   // Remove double spaces
   description = description.replace(/\s+/g, ' ');
   
   // Ensure within character limit
-  if (description.length > charLimit) {
-    description = description.substring(0, charLimit - 3) + '...';
-  }
+  // if (description.length > charLimit) {
+  //   description = description.substring(0, charLimit - 3) + '...';
+  // }
   
   return description;
 }
@@ -830,29 +837,43 @@ export function buildSeoDescriptionVariant(item: {
   shapes: string[];
   metal: string;
   quality?: string;
+  centerCt?: number;
   rowIndex?: number;
-}, charLimit: number = 160): string {
-  const { type, subcategory, totalCt, shapes, metal, quality, rowIndex = 0 } = item;
+}, charLimit: number = 500): string {
+  const { type, subcategory, totalCt, shapes, metal, quality, centerCt, rowIndex = 0 } = item;
   
   if (type === 'no-stones') {
-    const description = `Celebrate your moment with a ${formatCt2(totalCt)}mm ${subcategory.toLowerCase()} in ${metal}. Handcrafted by PrimeStyle for lasting brilliance.`;
+    const description = `This ${formatCt2(totalCt)}mm ${subcategory.toLowerCase()} in ${metal} showcases PrimeStyle's commitment to exceptional craftsmanship. The premium ${metal.toLowerCase()} setting ensures durability and timeless elegance, making this piece perfect for both everyday wear and special occasions. A testament to affordable luxury that doesn't compromise on quality or style.`;
     return description.length > charLimit ? description.substring(0, charLimit - 3) + '...' : description;
   }
   
-  // Stones variant: use new template format
+  // Stones variant: use enhanced template format with center stone info
   const ct = `${formatCt2(totalCt)} ct `;
   const cut = shapes.length > 0 ? `${shapes[0].toLowerCase()} cut ` : '';
   const lab = type === 'lab' ? 'lab-grown ' : 'natural ';
   const ring = subcategory.toLowerCase().replace('s', '');
   const metalPart = ` in ${normalizeMetal(metal)}`;
   
-  // Template array - shortened versions to fit within 160 chars
+  // Add center stone information if available
+  const centerPart = centerCt && centerCt > 0 ? ` featuring a beautiful ${formatCt2(centerCt)} ct center stone` : '';
+  
+  // Template array - 15 unique, engaging, human-like product descriptions (approximately 450 characters)
   const templates = [
-    `Elegant and timeless, this ${ct}${cut}${lab}${ring}${metalPart}. Crafted by PrimeStyle for exceptional value.`,
-    `Celebrate your moment with a ${ct}${cut}${lab}${ring}${metalPart}. Conflict-free and affordable from PrimeStyle.`,
-    `Eco-friendly sparkle: a ${ct}${cut}${lab}${ring}${metalPart}. Save on price, not on brilliance.`,
-    `Make it official with a ${ct}${cut}${lab}${ring}${metalPart}. Premium craftsmanship and fair pricing.`,
-    `A modern classic: ${ct}${cut}${lab}${ring}${metalPart}. Designed for daily wear with lifetime support.`
+    `This ${ct}${cut}${lab}diamond ${ring} in ${metal}${centerPart} showcases PrimeStyle's commitment to exceptional craftsmanship. The ${cut}${lab}diamonds are carefully selected for their brilliance, while the ${metal.toLowerCase()} setting ensures durability and timeless elegance. Perfect for marking life's most precious moments, this piece represents the perfect balance of luxury and accessibility.`,
+    `Discover the perfect blend of sophistication and value in this ${ct}${cut}${lab}diamond ${ring}${centerPart}. Set in premium ${metal.toLowerCase()}, every facet reflects PrimeStyle's dedication to quality. The ${cut}${lab}diamonds offer stunning sparkle, making this piece ideal for both everyday wear and special occasions. A testament to affordable luxury.`,
+    `Handcrafted with precision, this ${ct}${cut}${lab}diamond ${ring}${centerPart} in ${metal.toLowerCase()} embodies PrimeStyle's legacy of excellence. The ${cut}${lab}diamonds are ethically sourced and expertly cut for maximum brilliance. Whether you're celebrating love or treating yourself, this piece delivers exceptional beauty without compromising on quality or price.`,
+    `Elevate your jewelry collection with this stunning ${ct}${cut}${lab}diamond ${ring}${centerPart}. The ${metal.toLowerCase()} setting provides the perfect backdrop for the ${cut}${lab}diamonds to shine. PrimeStyle's master artisans have created a piece that balances elegance with practicality, making it perfect for both formal events and daily wear.`,
+    `Experience luxury redefined with this ${ct}${cut}${lab}diamond ${ring}${centerPart} in ${metal.toLowerCase()}. Every detail reflects PrimeStyle's unwavering standards, from the carefully selected ${cut}${lab}diamonds to the precision-crafted setting. This piece offers the perfect combination of beauty, durability, and value for the discerning jewelry lover.`,
+    `Transform your style with this magnificent ${ct}${cut}${lab}diamond ${ring}${centerPart}. Set in ${metal.toLowerCase()}, the ${cut}${lab}diamonds create a dazzling display of light and brilliance. PrimeStyle's commitment to quality craftsmanship ensures this piece will become a cherished part of your jewelry collection for years to come.`,
+    `Indulge in the artistry of this ${ct}${cut}${lab}diamond ${ring}${centerPart}. The ${metal.toLowerCase()} setting enhances the natural beauty of the ${cut}${lab}diamonds, creating a piece that's both sophisticated and wearable. PrimeStyle's attention to detail makes this ring perfect for those who appreciate fine jewelry without the premium price tag.`,
+    `Celebrate your unique story with this ${ct}${cut}${lab}diamond ${ring}${centerPart} in ${metal.toLowerCase()}. The ${cut}${lab}diamonds are expertly cut to maximize their natural sparkle, while the setting ensures comfort and durability. PrimeStyle delivers exceptional quality that makes every day feel special.`,
+    `Unlock the door to timeless elegance with this ${ct}${cut}${lab}diamond ${ring}${centerPart}. Crafted in ${metal.toLowerCase()}, the ${cut}${lab}diamonds offer stunning brilliance that catches the eye from every angle. PrimeStyle's dedication to excellence makes this piece a smart investment in both beauty and quality.`,
+    `Step into sophistication with this ${ct}${cut}${lab}diamond ${ring}${centerPart}. The ${metal.toLowerCase()} setting provides the perfect foundation for the ${cut}${lab}diamonds to showcase their natural beauty. PrimeStyle's commitment to affordable luxury means you can enjoy exceptional craftsmanship without the designer price tag.`,
+    `Revel in the beauty of this ${ct}${cut}${lab}diamond ${ring}${centerPart}. Set in ${metal.toLowerCase()}, the ${cut}${lab}diamonds create a mesmerizing display of light and elegance. PrimeStyle's master craftsmen ensure every detail meets the highest standards, making this piece perfect for those who demand excellence.`,
+    `Capture the essence of refined luxury with this ${ct}${cut}${lab}diamond ${ring}${centerPart}. The ${metal.toLowerCase()} setting enhances the natural brilliance of the ${cut}${lab}diamonds, creating a piece that's both stunning and practical. PrimeStyle delivers the perfect balance of beauty, quality, and affordability.`,
+    `Immerse yourself in the world of fine jewelry with this ${ct}${cut}${lab}diamond ${ring}${centerPart}. Crafted in ${metal.toLowerCase()}, the ${cut}${lab}diamonds offer exceptional sparkle that never fails to impress. PrimeStyle's dedication to quality ensures this piece will become a treasured part of your collection.`,
+    `Discover the perfect expression of your style with this ${ct}${cut}${lab}diamond ${ring}${centerPart}. The ${metal.toLowerCase()} setting provides the ideal backdrop for the ${cut}${lab}diamonds to shine. PrimeStyle's commitment to excellence means you can enjoy luxury craftsmanship at a price that makes sense.`,
+    `Embrace the art of fine jewelry with this ${ct}${cut}${lab}diamond ${ring}${centerPart}. Set in ${metal.toLowerCase()}, the ${cut}${lab}diamonds create a captivating display of elegance and sophistication. PrimeStyle's attention to detail ensures this piece offers exceptional value for the discerning jewelry enthusiast.`
   ];
   
   // Select template based on row index for consistency
@@ -863,9 +884,9 @@ export function buildSeoDescriptionVariant(item: {
   const cleanDescription = description.replace(/\s+/g, ' ');
   
   // Ensure within character limit
-  if (cleanDescription.length > charLimit) {
-    return cleanDescription.substring(0, charLimit - 3) + '...';
-  }
+  // if (cleanDescription.length > charLimit) {
+  //   return cleanDescription.substring(0, charLimit - 3) + '...';
+  // }
   
   return cleanDescription;
 }
