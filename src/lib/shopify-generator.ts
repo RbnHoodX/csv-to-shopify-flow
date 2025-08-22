@@ -278,8 +278,14 @@ function createProductInfo(variants: VariantSeed[]) {
   // Build comprehensive tags (keeping existing tag logic for now)
   const tagParts: string[] = [];
   
-  // Add category_subcategory as single tag
+  // Add category_subcategory as first tag
   tagParts.push(`${category}_${subcategory}`);
+  
+  // Add item type as second tag with exact capitalization from input
+  const diamondsType = inputRow.diamondsType || '';
+  if (diamondsType) {
+    tagParts.push(diamondsType);
+  }
   
   // Add unique shape tags in consistent order (before TCW tags)
   const shapes = collectShapes(variants);

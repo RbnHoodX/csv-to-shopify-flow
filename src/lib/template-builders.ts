@@ -592,10 +592,16 @@ export function buildTags(product: Product): string {
   // Diamonds items: keep existing tag logic
   const tagParts: string[] = [];
   
-  // Add category_subcategory as single tag
+  // Add category_subcategory as first tag
   const category = trimAll(inputRow['Category'] || 'Jewelry');
   const subcategory = trimAll(inputRow['Subcategory'] || 'Piece');
   tagParts.push(`${category}_${subcategory}`);
+  
+  // Add item type as second tag with exact capitalization from input
+  const diamondsType = inputRow.diamondsType || '';
+  if (diamondsType) {
+    tagParts.push(diamondsType);
+  }
   
   // Add unique shape tags in consistent order
   const shapes = getUniqueShapesOrdered(variants);
