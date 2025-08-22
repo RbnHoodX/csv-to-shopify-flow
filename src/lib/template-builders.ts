@@ -705,9 +705,9 @@ export function buildSeoTitleParent(item: {
   if (type === 'no-stones') {
     // No-stones parent: "{widthMm} mm - {Subcategory} - {Core}"
     if (widthMm) {
-      return `${widthMm.toFixed(1)} mm - ${subcategory} - ${core}`;
+      return `${widthMm.toFixed(1)} mm - ${subcategory} - ${core} | Primestyle`;
     }
-    return `${subcategory} - ${core}`;
+    return `${subcategory} - ${core} | Primestyle`;
   }
   
   // Stones parent: Include shape, metal, and center stone details
@@ -739,7 +739,7 @@ export function buildSeoTitleParent(item: {
     title += ` with ${formatCt2(centerCt)} CT Center`;
   }
   
-  title += ` - ${subcategory}`;
+  title += ` - ${subcategory} | Primestyle`;
   
   // Remove double spaces
   title = title.replace(/\s+/g, ' ');
@@ -776,7 +776,7 @@ export function buildSeoTitleVariant(item: {
   
   if (type === 'no-stones') {
     // No-stones variant: "{Subcategory} - {Metal} - {SKU}"
-    return `${subcategory} - ${metal || ''} - ${sku}`;
+    return `${subcategory} - ${metal || ''} - ${sku} | Primestyle`;
   }
   
   // Stones variant: Include shape, metal, and center stone details
@@ -798,7 +798,7 @@ export function buildSeoTitleVariant(item: {
     title += ` with ${formatCt2(centerCt)} CT Center`;
   }
   
-  title += ` - ${subcategory}`;
+  title += ` - ${subcategory} | Primestyle`;
   
   // Remove double spaces
   title = title.replace(/\s+/g, ' ');
