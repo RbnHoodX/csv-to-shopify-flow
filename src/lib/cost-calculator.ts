@@ -512,54 +512,83 @@ function calculateSideStoneDiamond(
 function calculateMetalCost(
   variant: VariantSeed,
   variantGrams: number,
-  ruleSet: RuleSet | NoStonesRuleSet
+  ruleSet: RuleSet | NoStonesRuleSet,
+  onWarning?: (message: string) => void
 ): { cost: number; pricePerGram: number } {
-  if ("metalPrice" in ruleSet) {
-    const metalFamilyKey = getMetalFamilyKey(variant.metalCode);
-    const pricePerGram = ruleSet.metalPrice.get(metalFamilyKey) || 2.5;
-    
-    const totalCost = variantGrams * pricePerGram;
-    
-    // DETAILED METAL COST CALCULATION LOGGING
-    console.log(`💎💎💎💎💎 METAL COST CALCULATION BREAKDOWN:`);
-    console.log(`💎 Input values:`);
-    console.log(`   - Variant grams: ${variantGrams} g`);
-    console.log(`   - Metal code: "${variant.metalCode}"`);
-    console.log(`   - Metal family key: "${metalFamilyKey}"`);
-    console.log(`💎 Pricing result:`);
-    console.log(`   - Price per gram: $${pricePerGram}/g`);
-    console.log(`   - Found in rules: ${ruleSet.metalPrice.has(metalFamilyKey)}`);
-    console.log(`💎 Calculation:`);
-    console.log(`   - Formula: ${variantGrams} g × $${pricePerGram}/g`);
-    console.log(`   - Raw result: ${totalCost}`);
-    console.log(`💎 Final result:`);
-    console.log(`   - Total metal cost: $${totalCost}`);
-
-    return {
-      cost: totalCost,
-      pricePerGram,
-    };
-  } else {
-    // No Stones - use default metal pricing
-    const defaultPricePerGram = 2.5;
-    const totalCost = variantGrams * defaultPricePerGram;
-    
-    // DETAILED DEFAULT METAL COST LOGGING
-    console.log(`💎💎💎💎💎 DEFAULT METAL COST CALCULATION:`);
-    console.log(`💎 Input values:`);
-    console.log(`   - Variant grams: ${variantGrams} g`);
-    console.log(`   - Default price per gram: $${defaultPricePerGram}/g`);
-    console.log(`💎 Calculation:`);
-    console.log(`   - Formula: ${variantGrams} g × $${defaultPricePerGram}/g`);
-    console.log(`   - Raw result: ${totalCost}`);
-    console.log(`💎 Final result:`);
-    console.log(`   - Total metal cost: $${totalCost}`);
-    
-    return {
-      cost: totalCost,
-      pricePerGram: defaultPricePerGram,
-    };
+  // Ensure metalType is present before proceeding
+  if (!variant.metalCode) {
+    throw new CostLookupError('Metal type is missing for variant', {
+      type: 'metal_cost',
+      shape: 'unknown',
+      weight: variantGrams,
+      productId: variant.core || 'unknown'
+    });
   }
+
+  // Both RuleSet and NoStonesRuleSet have metalPrice
+  const metalFamilyKey = getMetalFamilyKey(variant.metalCode);
+  console.log(`🔍 [Metal Cost] Looking up metal price for:`, {
+    variantMetalCode: variant.metalCode,
+    metalFamilyKey,
+    ruleSetType: "diamondPrices" in ruleSet ? "stone-based" : "no-stones",
+    availableMetalPrices: Array.from(ruleSet.metalPrice.entries()),
+    hasMetalPrice: ruleSet.metalPrice.has(metalFamilyKey)
+  });
+  
+  const pricePerGram = ruleSet.metalPrice.get(metalFamilyKey);
+  
+  if (pricePerGram === undefined) {
+    // Metal price not found in rules - this is a critical error
+    const ruleSetType = "diamondPrices" in ruleSet ? "stone-based" : "no-stones";
+    
+    // Special alert for no-stones products
+    if (ruleSetType === "no-stones") {
+      const noStonesError = `🚨 NO-STONES ALERT: Metal price for "${metalFamilyKey}" is missing from No Stones Rules! This will prevent cost calculation for ${variant.core}. Please check the No Stones Rules CSV file.`;
+      console.error(noStonesError);
+      
+      if (onWarning) {
+        onWarning(noStonesError);
+      }
+    }
+    
+    const errorMessage = `🚨 CRITICAL ERROR: Metal price not found for "${metalFamilyKey}" in ${ruleSetType} rules. Cannot calculate metal cost for ${variant.core}.`;
+    console.error(errorMessage);
+    
+    // Call the warning callback if provided
+    if (onWarning) {
+      onWarning(errorMessage);
+    }
+    
+    // Throw an error instead of using hardcoded fallback
+    throw new CostLookupError(`Metal price not found for "${metalFamilyKey}" in ${ruleSetType} rules`, {
+      type: 'metal_cost',
+      shape: 'unknown',
+      weight: variantGrams,
+      productId: variant.core || 'unknown'
+    });
+  }
+  
+  const totalCost = variantGrams * pricePerGram;
+  
+  // DETAILED METAL COST CALCULATION LOGGING
+  console.log(`💎💎💎💎💎 METAL COST CALCULATION BREAKDOWN:`);
+  console.log(`💎 Input values:`);
+  console.log(`   - Variant grams: ${variantGrams} g`);
+  console.log(`   - Metal code: "${variant.metalCode}"`);
+  console.log(`   - Metal family key: "${metalFamilyKey}"`);
+  console.log(`💎 Pricing result:`);
+  console.log(`   - Price per gram: $${pricePerGram}/g`);
+  console.log(`   - Found in rules: ${ruleSet.metalPrice.has(metalFamilyKey)}`);
+  console.log(`💎 Calculation:`);
+  console.log(`   - Formula: ${variantGrams} g × $${pricePerGram}/g`);
+  console.log(`   - Raw result: ${totalCost}`);
+  console.log(`💎 Final result:`);
+  console.log(`   - Total metal cost: $${totalCost}`);
+
+  return {
+    cost: totalCost,
+    pricePerGram,
+  };
 }
 
 /**
@@ -670,7 +699,8 @@ function calculateAllCosts(
 export function calculateCostBreakdown(
   variant: VariantSeed,
   ruleSet: RuleSet | NoStonesRuleSet,
-  sku: string
+  sku: string,
+  onWarning?: (message: string) => void
 ): CostBreakdown {
   const gramsCalc = calculateVariantGrams(variant, ruleSet);
 
@@ -679,7 +709,7 @@ export function calculateCostBreakdown(
   const sideDiamondCalc = calculateSideStoneDiamond(variant, ruleSet);
 
   // Calculate metal cost (separate from stone costs)
-  const metalCalc = calculateMetalCost(variant, gramsCalc.grams, ruleSet);
+  const metalCalc = calculateMetalCost(variant, gramsCalc.grams, ruleSet, onWarning);
 
   // Calculate all other costs
   const costsCalc = calculateAllCosts(variant, ruleSet);

@@ -18,6 +18,7 @@ import {
   getUniqueShapesOrdered,
   buildTitleDuplicate,
   buildBodyDuplicate,
+  buildTags,
   type Product 
 } from './template-builders';
 
@@ -278,50 +279,8 @@ function createProductInfo(variants: VariantSeed[]) {
   // Type format: "{Category}_{Subcategory}"
   const type = `${category}_${subcategory}`;
   
-  // Build comprehensive tags (keeping existing tag logic for now)
-  const tagParts: string[] = [];
-  
-  // Add category_subcategory as first tag
-  tagParts.push(`${category}_${subcategory}`);
-  
-  // Add item type as second tag with exact capitalization from input
-  const diamondsType = inputRow.diamondsType || '';
-  if (diamondsType) {
-    tagParts.push(diamondsType);
-  }
-  
-  // Add unique shape tags in consistent order (before TCW tags)
-  const shapes = collectShapes(variants);
-  const uniqueShapes = [...new Set(shapes)].sort(); // Remove duplicates and sort
-  uniqueShapes.forEach(shape => {
-    tagParts.push(`shape_${shape.toLowerCase()}`);
-  });
-  
-  // Always add shape_round if it's not already there
-  if (!uniqueShapes.some(shape => shape.toLowerCase() === 'round')) {
-    tagParts.push('shape_round');
-  }
-  
-  // Add TCW bucket tags (only for stones scenarios)
-  if (firstVariant.scenario !== 'NoStones') {
-    const caratWeights = variants.map(calculateTotalCaratWeight);
-    const minTCW = Math.min(...caratWeights);
-    const maxTCW = Math.max(...caratWeights);
-    const tcwBucketTags = generateTCWBucketTags(minTCW, maxTCW);
-    tagParts.push(...tcwBucketTags);
-  }
-  
-  // Add input tags if present (but filter out shape tags to avoid duplication)
-  const inputTags = trimAll(inputRow['Tags'] || inputRow['Keywords'] || '');
-  if (inputTags) {
-    const inputTagArray = inputTags.split(',').map(tag => tag.trim());
-    const filteredInputTags = inputTagArray.filter(tag => !tag.toLowerCase().startsWith('shape_'));
-    if (filteredInputTags.length > 0) {
-      tagParts.push(...filteredInputTags);
-    }
-  }
-  
-  const tags = tagParts.join(', ');
+  // Use the buildTags function from template-builders.ts which properly handles no-stones products
+  const tags = buildTags(product);
   
   // Generate Google Product Category based on type
   let googleCategory = 'Apparel & Accessories > Jewelry';
@@ -376,7 +335,8 @@ export function generateShopifyRowsWithCosts(
   naturalRules?: RuleSet,
   labGrownRules?: RuleSet,
   noStonesRules?: NoStonesRuleSet,
-  weightTable?: WeightLookupTable
+  weightTable?: WeightLookupTable,
+  onWarning?: (message: string) => void
 ): ShopifyRowWithCosts[] {
   if (variants.length === 0) return [];
 
@@ -418,20 +378,12 @@ export function generateShopifyRowsWithCosts(
         scenario: variant.scenario
       });
       
-      const costBreakdown = ruleSet 
-        ? calculateCostBreakdown(variant, ruleSet, sku)
-        : {
-            centerStoneDiamond: 0, sideStoneDiamond: 0, metalCost: 0, 
-            centerStoneLabor: 0, sideStoneLabor: 0, polishCost: 25, 
-            braceletsCost: 0, pendantsCost: 0, cadCreationCost: 20, additionalCost: 25,
-            totalCost: 70, variantGrams: 5, sku, published: true,
-            pricing: { cost: 70, multiplier: 2.5, variantPrice: 174.99, compareAtPrice: 280, marginSource: 'fallback' as const },
-            details: {
-              baseGrams: 5, weightMultiplier: 1, metalPricePerGram: 2.5,
-              centerCarats: 0, sideCarats: 0, centerPricePerCarat: 0, sidePricePerCarat: 0, 
-              sideStoneCount: 0, hasCenter: false, isBracelet: false, isPendant: false
-            }
-          };
+      // Ensure we have a rule set for cost calculation
+      if (!ruleSet) {
+        throw new Error(`No rule set found for variant ${variant.core}. Diamond type: ${firstVariant.inputRowRef.diamondsType}, Scenario: ${firstVariant.scenario}`);
+      }
+      
+      const costBreakdown = calculateCostBreakdown(variant, ruleSet, sku, onWarning);
 
       // Generate SEO data for EVERY variant using new functions
       const diamondType = firstVariant.inputRowRef.diamondsType?.toLowerCase() || 'natural';
@@ -500,8 +452,8 @@ export function generateShopifyRowsWithCosts(
         Published: 'TRUE', // All items should have TRUE value
         
         // Option Names (parent-only, blank for No Stones)
-        'Option1 Name': isParent && !isNoStones ? 'Metal/Color' : '',
-        'Option1 Value': isNoStones ? '' : translateMetal(variant.metalCode),
+        'Option1 Name': isParent ? 'Metal/Color' : '',
+        'Option1 Value': translateMetal(variant.metalCode),
         'Option2 Name': isParent && !isNoStones ? 'Total Carat' : '',
         'Option2 Value': isNoStones ? '' : calculateTotalCarat(variant),
         'Option3 Name': isParent && !isNoStones ? 'Diamond Quality' : '',

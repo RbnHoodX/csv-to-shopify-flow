@@ -633,12 +633,54 @@ export function buildTags(product: Product): string {
   const inputRow = firstVariant.inputRowRef;
   
   if (diamondType === 'NoStones') {
-    // NO-STONES: width tag only, no shape or diamond tags
+    // NO-STONES: Only keep tags that make sense for no-stones products
+    const tagParts: string[] = [];
+    
+    // Add category_subcategory as first tag
+    const category = trimAll(inputRow['Category'] || 'Jewelry');
+    const subcategory = trimAll(inputRow['Subcategory'] || 'Piece');
+    tagParts.push(`${category}_${subcategory}`);
+    
+    // Add width tag if present
     const width = toNum(inputRow['Unique Charcteristic/ Width for plain wedding bands'] || '0');
     if (width > 0) {
-      return `WIDTH_${width.toFixed(1)}`;
+      tagParts.push(`WIDTH_${width.toFixed(1)}`);
     }
-    return '';
+    
+    // Add metal tags from variants
+    const metalCodes = new Set<string>();
+    variants.forEach(variant => {
+      if (variant.metalCode) {
+        const metalName = translateMetal(variant.metalCode);
+        if (metalName) {
+          metalCodes.add(metalName.toLowerCase().replace(/\s+/g, '_'));
+        }
+      }
+    });
+    metalCodes.forEach(metal => {
+      tagParts.push(`metal_${metal}`);
+    });
+    
+    // Add input tags if present (filter out stone-related tags)
+    const inputTags = trimAll(inputRow['Tags'] || inputRow['Keywords'] || '');
+    if (inputTags) {
+      const inputTagArray = inputTags.split(',').map(tag => tag.trim());
+      const filteredInputTags = inputTagArray.filter(tag => {
+        const lowerTag = tag.toLowerCase();
+        // Exclude stone-related tags
+        return !lowerTag.startsWith('shape_') && 
+               !lowerTag.startsWith('tcw_') && 
+               !lowerTag.includes('carat') && 
+               !lowerTag.includes('ct') &&
+               !lowerTag.includes('stone') &&
+               !lowerTag.includes('diamond');
+      });
+      if (filteredInputTags.length > 0) {
+        tagParts.push(...filteredInputTags);
+      }
+    }
+    
+    return tagParts.join(', ');
   }
   
   // Diamonds items: keep existing tag logic

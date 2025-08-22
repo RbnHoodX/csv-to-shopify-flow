@@ -327,7 +327,10 @@ export const useCSVStore = create<CSVStore>((set, get) => ({
         naturalRules,
         labGrownRules,
         noStonesRules,
-        get().weightTable
+        get().weightTable,
+        (warning) => {
+          addLog('warning', warning);
+        }
       );
       
       // Calculate cost statistics

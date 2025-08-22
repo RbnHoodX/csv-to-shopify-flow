@@ -1,4 +1,5 @@
 import { trimAll, toNum } from "./csv-parser";
+import { getMetalFamilyKey } from "./cost-calculator";
 
 export interface DiamondPriceEntry {
   shape: string;
@@ -27,6 +28,7 @@ export interface RuleSet {
 
 export interface NoStonesRuleSet {
   metalsA: string[]; // Metals list for no-stones items
+  metalPrice: Map<string, number>; // Metal pricing per gram
 }
 
 /**
@@ -576,11 +578,22 @@ export function extractNoStonesRuleSets(
   ruleRows: Record<string, string>[]
 ): NoStonesRuleSet {
   if (!ruleRows || ruleRows.length === 0) {
-    return { metalsA: [] };
+    return { metalsA: [], metalPrice: new Map() };
   }
 
   const headers = Object.keys(ruleRows[0]);
   const metalsA: string[] = [];
+  const metalPrice = new Map<string, number>();
+
+  console.log(`🔧 [NoStones] Extracting rules from ${ruleRows.length} rows`);
+  console.log(`🔧 [NoStones] Headers: ${headers.join(', ')}`);
+  
+  // Debug: Show first few rows to understand structure
+  console.log(`🔧 [NoStones] First 3 rows for debugging:`);
+  for (let i = 0; i < Math.min(3, ruleRows.length); i++) {
+    const row = ruleRows[i];
+    console.log(`🔧 [NoStones] Row ${i}:`, Object.entries(row).map(([k, v]) => `${k}="${v}"`).join(' | '));
+  }
 
   // Column A: Metals list (first column)
   for (const row of ruleRows) {
@@ -590,8 +603,160 @@ export function extractNoStonesRuleSets(
     }
   }
 
+  // For no-stones rules, we need to find the actual price column
+  // The "Metal Price" column contains metal codes, not prices
+  // The actual prices are in the next column (usually _2 or similar)
+  let metalPriceColumnIndex = -1;
+  
+  // First, find the "Metal Price" column to understand the structure
+  const metalCodeColumnIndex = headers.findIndex(h => h === 'Metal Price');
+  if (metalCodeColumnIndex !== -1) {
+    console.log(`🔧 [NoStones] Found Metal Price column at index ${metalCodeColumnIndex}`);
+    
+    // Based on the debug output, prices are in column "_2" (index 5)
+    // Let's check if this column exists and has numeric values
+    const priceColumnIndex = headers.findIndex(h => h === '_2');
+    if (priceColumnIndex !== -1) {
+      console.log(`🔧 [NoStones] Found _2 column at index ${priceColumnIndex}, checking for prices...`);
+      const firstRowValue = ruleRows[0]?.[headers[priceColumnIndex]];
+      if (firstRowValue && !isNaN(toNum(firstRowValue))) {
+        console.log(`🔧 [NoStones] _2 column contains numeric value: ${firstRowValue}`);
+        metalPriceColumnIndex = priceColumnIndex;
+      }
+    }
+    
+    // If _2 column didn't work, look for any column with numeric values that look like prices
+    if (metalPriceColumnIndex === -1) {
+      for (let colIndex = 0; colIndex < headers.length; colIndex++) {
+        const header = headers[colIndex];
+        const value = ruleRows[0]?.[header];
+        
+        // Check if this column has numeric values that look like prices
+        if (value && !isNaN(toNum(value)) && toNum(value) > 0 && toNum(value) < 1000) {
+          console.log(`🔧 [NoStones] Found potential price column: "${header}" at index ${colIndex} with value ${value}`);
+          metalPriceColumnIndex = colIndex;
+          break;
+        }
+      }
+    }
+    
+    // If we found a price column, also verify it has multiple different prices
+    if (metalPriceColumnIndex !== -1) {
+      const prices = new Set();
+      for (const row of ruleRows) {
+        const price = toNum(row[headers[metalPriceColumnIndex]]);
+        if (price > 0) {
+          prices.add(price);
+        }
+      }
+      console.log(`🔧 [NoStones] Price column "${headers[metalPriceColumnIndex]}" contains ${prices.size} different prices: ${Array.from(prices).join(', ')}`);
+    }
+  }
+  
+  // Fallback: try to find any column that contains "price" and has numeric values
+  if (metalPriceColumnIndex === -1) {
+    console.log(`🔧 [NoStones] Fallback: Searching for price column with numeric values...`);
+    for (let colIndex = 0; colIndex < headers.length; colIndex++) {
+      const header = headers[colIndex];
+      if (header.toLowerCase().includes('price')) {
+        console.log(`🔧 [NoStones] Found potential price column: "${header}" at index ${colIndex}`);
+        // Check if this column has numeric values
+        let hasNumericValues = false;
+        for (const row of ruleRows) {
+          const value = row[header];
+          if (value && !isNaN(toNum(value))) {
+            hasNumericValues = true;
+            break;
+          }
+        }
+        if (hasNumericValues) {
+          console.log(`🔧 [NoStones] Column "${header}" has numeric values, using as metal price column`);
+          metalPriceColumnIndex = colIndex;
+          break;
+        }
+      }
+    }
+  }
+  console.log(`🔧 [NoStones] Metal price column index: ${metalPriceColumnIndex}`);
+  console.log(`🔧 [NoStones] Metal price column header: ${metalPriceColumnIndex !== -1 ? headers[metalPriceColumnIndex] : 'NOT FOUND'}`);
+  
+  if (metalPriceColumnIndex !== -1) {
+    console.log(`🔧 [NoStones] Processing metal pricing...`);
+    
+    // For no-stones rules, we need to use the "Metal Price" column for metal codes
+    // and the price column for the actual prices
+    const metalCodeColumnIndex = headers.findIndex(h => h === 'Metal Price');
+    
+    if (metalCodeColumnIndex !== -1) {
+      console.log(`🔧 [NoStones] Using Metal Price column (index ${metalCodeColumnIndex}) for metal codes`);
+      
+      for (const row of ruleRows) {
+        const metalFamilyKey = trimAll(row[headers[metalCodeColumnIndex]] || "");
+        const price = toNum(row[headers[metalPriceColumnIndex]] || 0);
+        
+        if (metalFamilyKey && price > 0) {
+          // Use the metal family key directly (no need to convert)
+          metalPrice.set(metalFamilyKey, price);
+          console.log(`🔧 [NoStones] Set metal price: ${metalFamilyKey} = $${price}/g`);
+        }
+      }
+    } else {
+      // Fallback to original logic if Metal Price column not found
+      console.log(`🔧 [NoStones] Fallback: Using first column for metal codes`);
+      for (const row of ruleRows) {
+        const metal = trimAll(row[headers[0]] || "");
+        const price = toNum(row[headers[metalPriceColumnIndex]] || 0);
+        
+        if (metal && price > 0) {
+          // Convert metal code to metal family key for consistent pricing
+          const metalFamilyKey = getMetalFamilyKey(metal);
+          metalPrice.set(metalFamilyKey, price);
+          console.log(`🔧 [NoStones] Set metal price: ${metal} -> ${metalFamilyKey} = $${price}/g`);
+        }
+      }
+    }
+  } else {
+    console.error(`🔧 [NoStones] ERROR: Could not find metal price column!`);
+    console.error(`🔧 [NoStones] Available headers: ${headers.join(', ')}`);
+    
+    // Emergency fallback: try to extract from the structure we can see
+    console.log(`🔧 [NoStones] Emergency fallback: trying to extract prices from visible structure...`);
+    const metalCodeColumnIndex = headers.findIndex(h => h === 'Metal Price');
+    if (metalCodeColumnIndex !== -1) {
+      console.log(`🔧 [NoStones] Found Metal Price column at index ${metalCodeColumnIndex}, looking for adjacent price column...`);
+      
+      // Look at the first row to understand the structure
+      const firstRow = ruleRows[0];
+      console.log(`🔧 [NoStones] First row structure:`, Object.entries(firstRow).map(([k, v]) => `${k}="${v}"`).join(' | '));
+      
+      // Try to find a column with numeric values that could be prices
+      for (let colIndex = 0; colIndex < headers.length; colIndex++) {
+        const header = headers[colIndex];
+        const value = firstRow[header];
+        if (value && !isNaN(toNum(value)) && toNum(value) > 0 && toNum(value) < 1000) {
+          console.log(`🔧 [NoStones] Emergency: Found potential price column "${header}" with value ${value}`);
+          // Try to extract prices from this column
+          for (const row of ruleRows) {
+            const metal = trimAll(row[headers[0]] || "");
+            const price = toNum(row[header] || 0);
+            if (metal && price > 0) {
+              const metalFamilyKey = getMetalFamilyKey(metal);
+              metalPrice.set(metalFamilyKey, price);
+              console.log(`🔧 [NoStones] Emergency: Set metal price: ${metal} -> ${metalFamilyKey} = $${price}/g`);
+            }
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  console.log(`🔧 [NoStones] Final metal price map:`, Object.fromEntries(metalPrice));
+  console.log(`🔧 [NoStones] Metals A: ${metalsA.join(', ')}`);
+
   return {
     metalsA: [...new Set(metalsA)].filter((m) => m.length > 0),
+    metalPrice,
   };
 }
 
