@@ -429,7 +429,7 @@ export function generateShopifyRowsWithCosts(
       } else {
         // Variant SEO data
         seoTitle = buildSeoTitleVariant({ type, subcategory, sku, totalCt, shapes, metal, centerCt, rowIndex: index });
-        seoDescription = buildSeoDescriptionVariant({ type, subcategory, totalCt, shapes, metal, quality, centerCt, rowIndex: index });
+        seoDescription = buildSeoDescriptionVariant({ type, subcategory, totalCt, shapes, metal, quality, centerCt, rowIndex: index, inputRow: variant.inputRowRef });
         imageAltText = buildImageAltVariant({ type, subcategory, totalCt, shapes, metal, centerCt, inputRow: variant.inputRowRef });
       }
       
