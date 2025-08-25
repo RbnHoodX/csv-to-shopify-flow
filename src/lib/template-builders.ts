@@ -273,6 +273,140 @@ function getTypeQualifier(diamondType: string): string {
   return '';
 }
 
+/**
+ * Helper function to build mm display from available mm fields
+ * Prefer size_mm; else format from (width_mm × height_mm), else diameter_mm, else thickness_mm
+ */
+export function buildMmDisplay(inputRow: any): string | null {
+  // Check for size_mm first
+  const sizeMm = toNum(inputRow['size_mm'] || inputRow['Size_mm'] || inputRow['Size MM'] || '0');
+  if (sizeMm > 0) {
+    return `${sizeMm.toFixed(1)} mm`;
+  }
+  
+  // Check for width_mm × height_mm
+  const widthMm = toNum(inputRow['width_mm'] || inputRow['Width_mm'] || inputRow['Width MM'] || '0');
+  const heightMm = toNum(inputRow['height_mm'] || inputRow['Height_mm'] || inputRow['Height MM'] || '0');
+  if (widthMm > 0 && heightMm > 0) {
+    return `${widthMm.toFixed(1)} × ${heightMm.toFixed(1)} mm`;
+  }
+  
+  // Check for diameter_mm
+  const diameterMm = toNum(inputRow['diameter_mm'] || inputRow['Diameter_mm'] || inputRow['Diameter MM'] || '0');
+  if (diameterMm > 0) {
+    return `${diameterMm.toFixed(1)} mm`;
+  }
+  
+  // Check for thickness_mm
+  const thicknessMm = toNum(inputRow['thickness_mm'] || inputRow['Thickness_mm'] || inputRow['Thickness MM'] || '0');
+  if (thicknessMm > 0) {
+    return `${thicknessMm.toFixed(1)} mm`;
+  }
+  
+  // Check for legacy width field for no-stones
+  const legacyWidth = toNum(inputRow['Unique Charcteristic/ Width for plain wedding bands'] || '0');
+  if (legacyWidth > 0) {
+    return `${legacyWidth.toFixed(1)} mm`;
+  }
+  
+  return null;
+}
+
+/**
+ * Helper function to detect if item has no stones
+ */
+export function hasNoStones(inputRow: any): boolean {
+  // Check total stones
+  const totalStones = toNum(inputRow['Total Stones'] || inputRow['total_stones'] || '0');
+  if (totalStones === 0) {
+    return true;
+  }
+  
+  // Check stone type
+  const stoneType = trimAll(inputRow['Stone Type'] || inputRow['stone_type'] || inputRow['Diamonds Type'] || '');
+  const noStoneTypes = ['none', 'no stones', 'plain', 'n/a'];
+  if (noStoneTypes.includes(stoneType.toLowerCase())) {
+    return true;
+  }
+  
+  // Check diamonds type for no-stones
+  const diamondsType = trimAll(inputRow['Diamonds Type'] || inputRow['diamondsType'] || '');
+  if (diamondsType.toLowerCase().includes('no stones') || diamondsType.toLowerCase().includes('nostones')) {
+    return true;
+  }
+  
+  return false;
+}
+
+/**
+ * Validation function to check if mm dimensions are missing from titles
+ */
+export function validateMmDimensions(product: Product): string[] {
+  const errors: string[] = [];
+  const firstVariant = product.variants[0];
+  const inputRow = firstVariant.inputRowRef;
+  const mmDisplay = buildMmDisplay(inputRow);
+  
+  if (mmDisplay) {
+    // Check if mm display is missing from parent title
+    const parentTitle = buildTitle(product);
+    if (!parentTitle.includes(mmDisplay)) {
+      errors.push(`MM dimension missing in parent title. Expected: "${mmDisplay}" in title.`);
+    }
+    
+    // Check if mm display is missing from variant titles
+    for (const variant of product.variants) {
+      const variantTitle = buildTitleDuplicate(variant, product.diamondType);
+      if (!variantTitle.includes(mmDisplay)) {
+        errors.push(`MM dimension missing in variant title for ${variant.core}. Expected: "${mmDisplay}" in title.`);
+      }
+    }
+  }
+  
+  return errors;
+}
+
+/**
+ * Validation function to check if no-stone items incorrectly reference stones in alt text
+ */
+export function validateNoStoneAltText(product: Product): string[] {
+  const errors: string[] = [];
+  const firstVariant = product.variants[0];
+  const inputRow = firstVariant.inputRowRef;
+  
+  if (hasNoStones(inputRow)) {
+    // Check parent alt text
+    const parentAlt = buildImageAltParent({ 
+      type: 'no-stones', 
+      subcategory: trimAll(inputRow['Subcategory'] || 'Jewelry'),
+      shapes: [],
+      inputRow 
+    });
+    
+    if (parentAlt.includes('carat') || parentAlt.includes('stone') || parentAlt.includes('diamond')) {
+      errors.push(`Alt text incorrectly references stones in parent: "${parentAlt}"`);
+    }
+    
+    // Check variant alt texts
+    for (const variant of product.variants) {
+      const variantAlt = buildImageAltVariant({ 
+        type: 'no-stones', 
+        subcategory: trimAll(inputRow['Subcategory'] || 'Jewelry'),
+        totalCt: 0,
+        shapes: [],
+        metal: '14KT White Gold',
+        inputRow: variant.inputRowRef
+      });
+      
+      if (variantAlt.includes('carat') || variantAlt.includes('stone') || variantAlt.includes('diamond')) {
+        errors.push(`Alt text incorrectly references stones in variant ${variant.core}: "${variantAlt}"`);
+      }
+    }
+  }
+  
+  return errors;
+}
+
 function orderShapesWithCenterFirst(shapes: string[], hasCenter: boolean, inputRow: any): string[] {
   // Custom shape ordering: Round should come before Princess
   // This is a business rule, not alphabetical ordering
@@ -421,15 +555,18 @@ export function buildTitle(product: Product): string {
   const firstVariant = variants[0];
   const inputRow = firstVariant.inputRowRef;
   
+  // Get mm display for all items
+  const mmDisplay = buildMmDisplay(inputRow);
+  
   if (diamondType === 'NoStones') {
-    const width = toNum(inputRow['Unique Charcteristic/ Width for plain wedding bands'] || '0');
     const subcategory = trimAll(inputRow['Subcategory'] || 'Jewelry');
+    const baseTitle = `${subcategory} - in 14KT, 18KT & Platinum`;
     
-    if (width > 0) {
-      return `${width.toFixed(1)} mm - ${subcategory} - in 14KT, 18KT & Platinum`;
-    } else {
-      return `${subcategory} - in 14KT, 18KT & Platinum`;
+    // Add mm display if available
+    if (mmDisplay) {
+      return `${baseTitle} (${mmDisplay})`;
     }
+    return baseTitle;
   }
   
   // Get carat range for parent
@@ -445,14 +582,22 @@ export function buildTitle(product: Product): string {
   // Get subcategory
   const subcategory = trimAll(inputRow['Subcategory'] || 'Jewelry');
   
-  // Build title following new rules
+  // Build base title following new rules
+  let baseTitle = '';
   if (diamondType === 'Natural') {
     // NATURAL: include "Natural Diamonds" (capital D)
-    return `${caratRange} ${shapesStr} Cut Natural Diamonds - ${subcategory}`;
+    baseTitle = `${caratRange} ${shapesStr} Cut Natural Diamonds - ${subcategory}`;
   } else {
     // LAB-GROWN: DO NOT include "Lab-Grown" in Title, but capitalize "Diamonds"
-    return `${caratRange} ${shapesStr} Cut Diamonds - ${subcategory}`;
+    baseTitle = `${caratRange} ${shapesStr} Cut Diamonds - ${subcategory}`;
   }
+  
+  // Add mm display if available
+  if (mmDisplay) {
+    return `${baseTitle} (${mmDisplay})`;
+  }
+  
+  return baseTitle;
 }
 
 /**
@@ -464,13 +609,17 @@ export function buildBody(product: Product): string {
   const inputRow = firstVariant.inputRowRef;
   
   if (diamondType === 'NoStones') {
-    const width = toNum(inputRow['Unique Charcteristic/ Width for plain wedding bands'] || '0');
     const subcategory = trimAll(inputRow['Subcategory'] || 'Jewelry');
+    const mmDisplay = buildMmDisplay(inputRow);
     
-    if (width > 0) {
-      return `<div><p><strong>${width.toFixed(1)} mm - ${subcategory} - in 14KT, 18KT & Platinum</strong></p><p>Expertly crafted jewelry piece from Primestyle.com. Made with precision and attention to detail.</p><p>Perfect for everyday wear or special occasions.</p><p><strong>${width.toFixed(1)} mm ${subcategory} in 14KT, 18KT, and Platinum</strong></p><p>Reward yourself with our ${width.toFixed(1)} mm ${subcategory.toLowerCase()} in 14KT, 18KT, and Platinum.</p><p>Select your choice of precious metal between 14 Karat, 18 Karat Yellow, White and Rose Gold, or Platinum.</p><p>At Primestyle.com, we deal ONLY with 100% real, natural, and conflict-free diamonds. Our diamonds are NOT enhanced nor treated.</p><p>Shine with chic with Primestyle diamonds ${subcategory.toLowerCase()}.</p></div>`;
+    // Build base title with mm display if available
+    const baseTitle = `${subcategory} - in 14KT, 18KT & Platinum`;
+    const titleWithMm = mmDisplay ? `${baseTitle} (${mmDisplay})` : baseTitle;
+    
+    if (mmDisplay) {
+      return `<div><p><strong>${titleWithMm}</strong></p><p>Expertly crafted jewelry piece from Primestyle.com. Made with precision and attention to detail.</p><p>Perfect for everyday wear or special occasions.</p><p><strong>${subcategory} ${mmDisplay} in 14KT, 18KT, and Platinum</strong></p><p>Reward yourself with our ${subcategory.toLowerCase()} ${mmDisplay} in 14KT, 18KT, and Platinum.</p><p>Select your choice of precious metal between 14 Karat, 18 Karat Yellow, White and Rose Gold, or Platinum.</p><p>At Primestyle.com, we deal ONLY with 100% real, natural, and conflict-free diamonds. Our diamonds are NOT enhanced nor treated.</p><p>Shine with chic with Primestyle diamonds ${subcategory.toLowerCase()}.</p></div>`;
     } else {
-      return `<div><p><strong>${subcategory} - in 14KT, 18KT & Platinum</strong></p><p>Expertly crafted jewelry piece from Primestyle.com. Made with precision and attention to detail.</p><p>Select your choice of precious metal between 14 Karat, 18 Karat Yellow, White and Rose Gold, or Platinum.</p><p>At Primestyle.com, we deal ONLY with 100% real, natural, and conflict-free diamonds. Our diamonds are NOT enhanced nor treated.</p><p>Perfect for everyday wear or special occasions.</p></div>`;
+      return `<div><p><strong>${titleWithMm}</strong></p><p>Expertly crafted jewelry piece from Primestyle.com. Made with precision and attention to detail.</p><p>Select your choice of precious metal between 14 Karat, 18 Karat Yellow, White and Rose Gold, or Platinum.</p><p>At Primestyle.com, we deal ONLY with 100% real, natural, and conflict-free diamonds. Our diamonds are NOT enhanced nor treated.</p><p>Perfect for everyday wear or special occasions.</p></div>`;
     }
   }
   
@@ -815,19 +964,7 @@ export function buildTags(product: Product): string {
       tagParts.push(`WIDTH_${width.toFixed(1)}`);
     }
     
-    // Add metal tags from variants
-    const metalCodes = new Set<string>();
-    variants.forEach(variant => {
-      if (variant.metalCode) {
-        const metalName = translateMetal(variant.metalCode);
-        if (metalName) {
-          metalCodes.add(metalName.toLowerCase().replace(/\s+/g, '_'));
-        }
-      }
-    });
-    metalCodes.forEach(metal => {
-      tagParts.push(`metal_${metal}`);
-    });
+         // Metal tags removed as requested
     
     // Add input tags if present (filter out stone-related tags)
     const inputTags = trimAll(inputRow['Tags'] || inputRow['Keywords'] || '');
@@ -1164,13 +1301,33 @@ export function buildImageAltVariant(item: {
   shapes: string[];
   metal: string;
   centerCt?: number;
+  inputRow?: any; // Add inputRow for mm data and no-stone detection
 }, charLimit: number = 120): string {
-  const { type, subcategory, totalCt, shapes, metal, centerCt } = item;
+  const { type, subcategory, totalCt, shapes, metal, centerCt, inputRow } = item;
+  
+  // // Check if this is actually a no-stone item (regardless of type parameter)
+  // const isNoStoneItem = inputRow ? hasNoStones(inputRow) : (type === 'no-stones');
   
   if (type === 'no-stones') {
     // No-stones alt: "{widthMm} mm {subcategory} in {metalLower}"
+
+  // if (isNoStoneItem) {
+  //   // No-stones alt: "{product_type} in {metal}{mm_note} | No stones"
     const normalizedMetal = normalizeMetal(metal);
-    return `${formatCt2(totalCt)} mm ${subcategory.toLowerCase()} in ${normalizedMetal}`;
+    const mmDisplay = inputRow ? buildMmDisplay(inputRow) : null;
+    const mmNote = mmDisplay ? ` - ${mmDisplay}` : '';
+    
+    let alt = `${subcategory.toLowerCase()} in ${normalizedMetal}${mmNote} | No stones`;
+    
+    // Remove double spaces
+    alt = alt.replace(/\s+/g, ' ');
+    
+    // Ensure within character limit
+    if (alt.length > charLimit) {
+      alt = alt.substring(0, charLimit - 3) + '...';
+    }
+    
+    return alt;
   }
   
   // Stones variant: "{totalCt} carat {shapesLower} cut {labOrNaturalSingular} {subcategory} in {metalLower}[ with {centerCt} carat center]"
@@ -1205,15 +1362,29 @@ export function buildImageAltParent(item: {
   caratRange?: { minCt: number; maxCt: number };
   shapes: string[];
   widthMm?: number;
+  inputRow?: any; // Add inputRow for mm data and no-stone detection
 }, charLimit: number = 120): string {
-  const { type, subcategory, caratRange, shapes, widthMm } = item;
+  const { type, subcategory, caratRange, shapes, widthMm, inputRow } = item;
+  
+  // Check if this is actually a no-stone item (regardless of type parameter)
+  const isNoStoneItem = inputRow ? hasNoStones(inputRow) : (type === 'no-stones');
   
   if (type === 'no-stones') {
-    // No-stones parent alt: "{widthMm} mm {subcategory}"
-    if (widthMm) {
-      return `${widthMm.toFixed(1)} mm ${subcategory.toLowerCase()}`;
+    // No-stones parent alt: "{product_type}{mm_note} | No stones"
+    const mmDisplay = inputRow ? buildMmDisplay(inputRow) : (widthMm ? `${widthMm.toFixed(1)} mm` : null);
+    const mmNote = mmDisplay ? ` ${mmDisplay}` : '';
+    
+    let alt = `${subcategory.toLowerCase()}${mmNote} | No stones`;
+    
+    // Remove double spaces
+    alt = alt.replace(/\s+/g, ' ');
+    
+    // Ensure within character limit
+    if (alt.length > charLimit) {
+      alt = alt.substring(0, charLimit - 3) + '...';
     }
-    return subcategory.toLowerCase();
+    
+    return alt;
   }
   
   // Stones parent: "{minCt}-{maxCt} carat {shapesLower} cut {labOrNaturalSingular} {subcategory}"
@@ -1244,15 +1415,18 @@ export function buildImageAltParent(item: {
 export function buildTitleDuplicate(variant: VariantSeed, diamondType: 'Natural' | 'LabGrown' | 'NoStones'): string {
   const inputRow = variant.inputRowRef;
   
+  // Get mm display for all items
+  const mmDisplay = buildMmDisplay(inputRow);
+  
   if (diamondType === 'NoStones') {
-    const width = toNum(inputRow['Unique Charcteristic/ Width for plain wedding bands'] || '0');
     const subcategory = trimAll(inputRow['Subcategory'] || 'Jewelry');
+    const baseTitle = `${subcategory} - in 14KT, 18KT & Platinum`;
     
-    if (width > 0) {
-      return `${width.toFixed(1)} mm - ${subcategory} - in 14KT, 18KT & Platinum`;
-    } else {
-      return `${subcategory} - in 14KT, 18KT & Platinum`;
+    // Add mm display if available
+    if (mmDisplay) {
+      return `${baseTitle} (${mmDisplay})`;
     }
+    return baseTitle;
   }
   
   // Get carat weight for this specific variant
@@ -1304,14 +1478,22 @@ export function buildTitleDuplicate(variant: VariantSeed, diamondType: 'Natural'
   // Get subcategory
   const subcategory = trimAll(inputRow['Subcategory'] || 'Jewelry');
   
-  // Build title following same rules as buildTitle
+  // Build base title following same rules as buildTitle
+  let baseTitle = '';
   if (diamondType === 'Natural') {
     // NATURAL: include "Natural Diamonds" (capital D)
-    return `${totalCt.toFixed(2)} CT ${shapesStr} Cut Natural Diamonds - ${subcategory}`;
+    baseTitle = `${totalCt.toFixed(2)} CT ${shapesStr} Cut Natural Diamonds - ${subcategory}`;
   } else {
     // LAB-GROWN: DO NOT include "Lab-Grown" in Title, but capitalize "Diamonds"
-    return `${totalCt.toFixed(2)} CT ${shapesStr} Cut Diamonds - ${subcategory}`;
+    baseTitle = `${totalCt.toFixed(2)} CT ${shapesStr} Cut Diamonds - ${subcategory}`;
   }
+  
+  // Add mm display if available
+  if (mmDisplay) {
+    return `${baseTitle} (${mmDisplay})`;
+  }
+  
+  return baseTitle;
 }
 
 /**
@@ -1321,13 +1503,17 @@ export function buildBodyDuplicate(variant: VariantSeed, diamondType: 'Natural' 
   const inputRow = variant.inputRowRef;
   
   if (diamondType === 'NoStones') {
-    const width = toNum(inputRow['Unique Charcteristic/ Width for plain wedding bands'] || '0');
     const subcategory = trimAll(inputRow['Subcategory'] || 'Jewelry');
+    const mmDisplay = buildMmDisplay(inputRow);
     
-    if (width > 0) {
-      return `<div><p><strong>${width.toFixed(1)} mm - ${subcategory} - in 14KT, 18KT & Platinum</strong></p><p>Expertly crafted jewelry piece from Primestyle.com. Made with precision and attention to detail.</p><p>Perfect for everyday wear or special occasions.</p><p><strong>${width.toFixed(1)} mm ${subcategory} in 14KT, 18KT, and Platinum</strong></p><p>Reward yourself with our ${width.toFixed(1)} mm ${subcategory.toLowerCase()} in 14KT, 18KT, and Platinum.</p><p>Select your choice of precious metal between 14 Karat, 18 Karat Yellow, White and Rose Gold, or Platinum.</p><p>At Primestyle.com, we deal ONLY with 100% real, natural, and conflict-free diamonds. Our diamonds are NOT enhanced nor treated.</p><p>Shine with chic with Primestyle diamonds ${subcategory.toLowerCase()}.</p></div>`;
+    // Build base title with mm display if available
+    const baseTitle = `${subcategory} - in 14KT, 18KT & Platinum`;
+    const titleWithMm = mmDisplay ? `${baseTitle} (${mmDisplay})` : baseTitle;
+    
+    if (mmDisplay) {
+      return `<div><p><strong>${titleWithMm}</strong></p><p>Expertly crafted jewelry piece from Primestyle.com. Made with precision and attention to detail.</p><p>Perfect for everyday wear or special occasions.</p><p><strong>${subcategory} ${mmDisplay} in 14KT, 18KT, and Platinum</strong></p><p>Reward yourself with our ${subcategory.toLowerCase()} ${mmDisplay} in 14KT, 18KT, and Platinum.</p><p>Select your choice of precious metal between 14 Karat, 18 Karat Yellow, White and Rose Gold, or Platinum.</p><p>At Primestyle.com, we deal ONLY with 100% real, natural, and conflict-free diamonds. Our diamonds are NOT enhanced nor treated.</p><p>Shine with chic with Primestyle diamonds ${subcategory.toLowerCase()}.</p></div>`;
     } else {
-      return `<div><p><strong>${subcategory} - in 14KT, 18KT & Platinum</strong></p><p>Expertly crafted jewelry piece from Primestyle.com. Made with precision and attention to detail.</p><p>Select your choice of precious metal between 14 Karat, 18 Karat Yellow, White and Rose Gold, or Platinum.</p><p>At Primestyle.com, we deal ONLY with 100% real, natural, and conflict-free diamonds. Our diamonds are NOT enhanced nor treated.</p><p>Perfect for everyday wear or special occasions.</p></div>`;
+      return `<div><p><strong>${titleWithMm}</strong></p><p>Expertly crafted jewelry piece from Primestyle.com. Made with precision and attention to detail.</p><p>Select your choice of precious metal between 14 Karat, 18 Karat Yellow, White and Rose Gold, or Platinum.</p><p>At Primestyle.com, we deal ONLY with 100% real, natural, and conflict-free diamonds. Our diamonds are NOT enhanced nor treated.</p><p>Perfect for everyday wear or special occasions.</p></div>`;
     }
   }
   

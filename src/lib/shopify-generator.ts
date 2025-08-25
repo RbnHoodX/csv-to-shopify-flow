@@ -425,12 +425,12 @@ export function generateShopifyRowsWithCosts(
         
         seoTitle = buildSeoTitleParent({ type, subcategory, core: variant.core, shapes, caratRange, widthMm, metals: productInfo.metals, centerCt: centerCt, centerCtRange });
         seoDescription = buildSeoDescriptionParent({ type, subcategory, shapes, caratRange, metals: productInfo.metals, centerCt: centerCt, centerCtRange });
-        imageAltText = buildImageAltParent({ type, subcategory, caratRange, shapes, widthMm });
+        imageAltText = buildImageAltParent({ type, subcategory, caratRange, shapes, widthMm, inputRow: firstVariant.inputRowRef });
       } else {
         // Variant SEO data
         seoTitle = buildSeoTitleVariant({ type, subcategory, sku, totalCt, shapes, metal, centerCt, rowIndex: index });
         seoDescription = buildSeoDescriptionVariant({ type, subcategory, totalCt, shapes, metal, quality, centerCt, rowIndex: index });
-        imageAltText = buildImageAltVariant({ type, subcategory, totalCt, shapes, metal, centerCt });
+        imageAltText = buildImageAltVariant({ type, subcategory, totalCt, shapes, metal, centerCt, inputRow: variant.inputRowRef });
       }
       
       const seoData = {
