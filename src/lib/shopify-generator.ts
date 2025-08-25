@@ -301,7 +301,7 @@ function createProductInfo(variants: VariantSeed[]) {
     tags, 
     bodyHTML, 
     googleCategory,
-    diamondType: inputRow.diamondsType || 'diamonds',
+    diamondType: productDiamondType,
     qualities: [...new Set(variants.map(v => v.qualityCode).filter(Boolean))],
     metals: [...new Set(variants.map(v => translateMetal(v.metalCode)))],
     seoTitle: seoData.title,
